@@ -1,25 +1,29 @@
 mod grid;
 
+use structopt::StructOpt;
 use color_eyre::eyre::Result;
 
-fn parse_args(args: &[String]) -> Result<(usize, usize, usize), std::num::ParseIntError> {
-
-    assert_eq!(args.len(), 4, "Error: Argument must be 3, [size of grid : usize] [number of points : usize] [number of ephocs : usize]");
-
-    Ok((args[1].parse()?, args[2].parse()?, args[3].parse()?))
+#[derive(StructOpt)]
+#[structopt(name = "Grid", about = "Values to create the timeline.")]
+struct Opt {
+    #[structopt(short, long, default_value = "20")]
+    size : usize,
+    #[structopt(short, long, default_value = "1000")]
+    points : usize,
+    #[structopt(short, long, default_value = "100")]
+    epochs : usize,
+    // #[structopt(short, long, default_value = "100")]
+    // file : String
 }
 
 fn main() -> Result<()> {
     color_eyre::install()?;
-    let args: Vec<String> = std::env::args().collect();
 
-    match parse_args(&args) {
-        Ok((size, points, epochs)) => {
-            let timeline = grid::create_timeline(size, points, epochs);
-            println!("Timeline = {:?}", timeline);
-        }
-        Err(_) => panic!("Error : One of the arguments wasn't a valid usize")
-    }
+    let opt = Opt::from_args();
+    // let mut stdout = std::io::stdout();
+
+    let timeline = grid::create_timeline(opt.size, opt.points, opt.epochs);
+    println!("Timeline = {:?}", timeline);
 
     Ok(())
 }

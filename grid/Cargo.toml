@@ -8,4 +8,5 @@ edition = "2018"
 
 [dependencies]
 color-eyre = "0.5"
+structopt = "0.3"
 rand = "0.8"
