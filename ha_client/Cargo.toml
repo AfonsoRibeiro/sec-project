@@ -1,5 +1,5 @@
 [package]
-name = "HA_client"
+name = "ha_client"
 version = "0.1.0"
 authors = ["AfonsoRibeiro <1998afonsoribeiro1998@gmail.com>"]
 edition = "2018"
