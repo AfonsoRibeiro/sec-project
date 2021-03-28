@@ -2,8 +2,12 @@
 
 members = [
     "grid",
+    "protos",
     "client",
     "ha_client",
     "single_server",
     "multiple_servers",
 ]
+
+[profile.dev.package.backtrace]
+opt-level = 3

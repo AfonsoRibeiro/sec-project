@@ -1,13 +1,8 @@
-
 use structopt::StructOpt;
 use color_eyre::eyre::Result;
 
-// use locationstorage::greeter_client::GreeterClient;
-// use locationstorage::HelloRequest;
-
-// pub mod hello_world {
-//     tonic::include_proto!("locationstorage");
-// }
+use protos::location_storage::HelloRequest;
+use protos::location_storage::greeter_client::GreeterClient;
 
 #[derive(StructOpt)]
 #[structopt(name = "Client", about = "Reporting and verifying locations since 99.")]
@@ -20,10 +15,21 @@ struct Opt {
     grid_file : String
 }
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     color_eyre::install()?;
 
-    let opt = Opt::from_args();
+    //let opt = Opt::from_args();
+
+    let mut client = GreeterClient::connect("http://[::1]:50051").await?;
+
+    let request = tonic::Request::new(HelloRequest {
+        name: "Tonic".into(),
+    });
+
+    let response = client.say_hello(request).await?;
+
+    println!("RESPONSE={:?}", response);
 
 
     Ok(())
