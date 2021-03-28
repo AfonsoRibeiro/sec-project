@@ -3,7 +3,7 @@
 members = [
     "grid",
     "client",
-    "HA_client",
+    "ha_client",
     "single_server",
     "multiple_servers",
 ]

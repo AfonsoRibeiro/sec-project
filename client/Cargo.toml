@@ -9,3 +9,8 @@ edition = "2018"
 [dependencies]
 color-eyre = "0.5"
 structopt = "0.3"
+tonic = "0.4"
+prost = "0.7"
+
+[build-dependencies]
+tonic-build = "0.4"

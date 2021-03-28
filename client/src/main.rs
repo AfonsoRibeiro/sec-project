@@ -2,6 +2,13 @@
 use structopt::StructOpt;
 use color_eyre::eyre::Result;
 
+// use locationstorage::greeter_client::GreeterClient;
+// use locationstorage::HelloRequest;
+
+// pub mod hello_world {
+//     tonic::include_proto!("locationstorage");
+// }
+
 #[derive(StructOpt)]
 #[structopt(name = "Client", about = "Reporting and verifying locations since 99.")]
 struct Opt {
