@@ -1,0 +1,21 @@
+
+syntax = "proto3";
+
+package location_proof;
+
+service LocationProof {
+    rpc RequestLocationProof (RequestLocationProofRequest) returns (RequestLocationProofResponse) {}
+}
+
+message Proof {
+    string proving = 1;
+}
+
+message RequestLocationProofRequest {
+    uint32 idx = 1;
+    uint32 epoch = 2;
+}
+
+message RequestLocationProofResponse {
+    Proof proof = 1;
+}

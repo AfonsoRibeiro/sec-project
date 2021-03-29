@@ -6,9 +6,9 @@ use color_eyre::eyre::Result;
 #[derive(StructOpt)]
 #[structopt(name = "Grid", about = "Values to create the timeline.")]
 struct Opt {
-    #[structopt(short, long, default_value = "20")]
+    #[structopt(short, long, default_value = "10")]
     size : usize,
-    #[structopt(short, long, default_value = "1000")]
+    #[structopt(short, long, default_value = "100")]
     points : usize,
     #[structopt(short, long, default_value = "100")]
     epochs : usize,

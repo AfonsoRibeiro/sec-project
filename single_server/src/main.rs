@@ -1,38 +1,49 @@
-use structopt::StructOpt;
+//use structopt::StructOpt;
 use color_eyre::eyre::Result;
 
 use tonic::{transport::Server, Request, Response, Status};
 
-use protos::location_storage::greeter_server::{Greeter, GreeterServer};
-use protos::location_storage::{HelloReply, HelloRequest};
+use protos::location_storage::location_storage_server::{LocationStorage, LocationStorageServer};
+use protos::location_storage::{SubmitLocationReportRequest, SubmitLocationReportResponse,
+    ObtainLocationReportRequest, ObtainLocationReportResponse, Report};
 
 #[derive(Default)]
-pub struct MyGreeter {}
+pub struct MyLocationStorage {}
 
 #[tonic::async_trait]
-impl Greeter for MyGreeter {
-    async fn say_hello(
+impl LocationStorage for MyLocationStorage {
+    async fn submit_location_report(
         &self,
-        request: Request<HelloRequest>,
-    ) -> Result<Response<HelloReply>, Status> {
+        request: Request<SubmitLocationReportRequest>,
+    ) -> Result<Response<SubmitLocationReportResponse>, Status> {
         println!("Got a request from {:?}", request.remote_addr());
 
-        let reply = HelloReply {
-            message: format!("Hello {}!", request.into_inner().name),
+        Ok(Response::new(SubmitLocationReportResponse {}))
+    }
+
+    async fn obtain_location_report(
+        &self,
+        request: Request<ObtainLocationReportRequest>,
+    ) -> Result<Response<ObtainLocationReportResponse>, Status> {
+        println!("Got a request from {:?}", request.remote_addr());
+
+        let reply = ObtainLocationReportResponse {
+            report : Some(Report {loc : "lol".to_string()}),
         };
+
         Ok(Response::new(reply))
     }
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> Result<()> {
     let addr = "[::1]:50051".parse().unwrap();
-    let greeter = MyGreeter::default();
+    let greeter = MyLocationStorage::default();
 
-    println!("GreeterServer listening on {}", addr);
+    println!("LocationStorageServer listening on {}", addr);
 
     Server::builder()
-        .add_service(GreeterServer::new(greeter))
+        .add_service(LocationStorageServer::new(greeter))
         .serve(addr)
         .await?;
 

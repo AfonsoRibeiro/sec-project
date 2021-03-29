@@ -3,14 +3,28 @@ syntax = "proto3";
 
 package location_storage;
 
-service Greeter {
-  rpc SayHello (HelloRequest) returns (HelloReply) {}
+service LocationStorage {
+    rpc SubmitLocationReport (SubmitLocationReportRequest) returns (SubmitLocationReportResponse) {}
+    rpc ObtainLocationReport (ObtainLocationReportRequest) returns (ObtainLocationReportResponse) {}
 }
 
-message HelloRequest {
-  string name = 1;
+message Report {
+    string loc = 1;
 }
 
-message HelloReply {
-  string message = 1;
+message SubmitLocationReportRequest {
+    Report report = 1;
+    uint32 idx = 2;
+    uint32 epoch = 3;
+}
+
+message SubmitLocationReportResponse {}
+
+message ObtainLocationReportRequest {
+    uint32 idx = 1;
+    uint32 epoch = 2;
+}
+
+message ObtainLocationReportResponse {
+    Report report = 1;
 }
