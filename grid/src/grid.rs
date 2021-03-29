@@ -1,16 +1,18 @@
 use std::collections::HashSet;
 use rand::Rng;
 
+use serde_derive::{Deserialize, Serialize};
 
 // Grid simulated thru a single vector
-#[derive(Debug)]
-struct Grid {
+#[derive(Debug, Deserialize, Serialize)]
+pub struct Grid {
     grid : Vec<HashSet<usize>>,
     total_size : usize,
     size : usize,
 }
 
 impl Grid {
+
     fn new_empty(size : usize) -> Grid {
         Grid {
             grid : (0..size*size).map(|_| HashSet::new()).collect(),
@@ -18,6 +20,7 @@ impl Grid {
             size : size,
         }
     }
+
     fn new_randomly_filled(size : usize, points : usize) -> Grid {
         let mut rng = rand::thread_rng();
         let mut grid = Grid::new_empty(size);
@@ -26,9 +29,22 @@ impl Grid {
         }
         grid
     }
+
+    fn get_position(&self, index : usize) -> (usize, usize) {
+        (index % self.total_size, index / self.total_size)
+    }
+
+    pub fn find_point(&self, point : usize) -> Option<(usize, usize)> {
+        for (index, pos) in self.grid.iter().enumerate() {
+            if pos.contains(&point) {
+                return Some(self.get_position(index));
+            }
+        }
+        None
+    }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Timeline {
     timeline : Vec<Grid>,
     ephocs : usize,

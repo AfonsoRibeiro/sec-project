@@ -7,11 +7,14 @@ use color_eyre::eyre::Result;
 #[derive(StructOpt)]
 #[structopt(name = "Client", about = "Reporting and verifying locations since 99.")]
 struct Opt {
-    #[structopt(name = "server", long, default_value="http://[::1]:50051")]
+
+    #[structopt(name = "server", long, default_value = "http://[::1]:50051")]
     server_url : String, // TODO
-    #[structopt(long)]
+
+    #[structopt(name = "id", long)]
     idx : usize,
-    #[structopt(name = "grid", long, default_value="grid.txt")]
+
+    #[structopt(name = "grid", long, default_value = "grid/grid.txt")]
     grid_file : String
 }
 
@@ -20,6 +23,7 @@ async fn main() -> Result<()> {
     color_eyre::install()?;
 
     let opt = Opt::from_args();
+
 
     Ok(())
 }
