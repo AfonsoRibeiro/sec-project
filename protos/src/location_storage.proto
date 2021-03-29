@@ -1,5 +1,6 @@
-
 syntax = "proto3";
+
+import "location_proof.proto";
 
 package location_storage;
 
@@ -9,7 +10,7 @@ service LocationStorage {
 }
 
 message Report {
-    string loc = 1;
+    repeated location_proof.Proof proofs = 1;
 }
 
 message SubmitLocationReportRequest {
