@@ -1,9 +1,9 @@
-use std::fs::File;
+use std::{fs::File, usize};
 use std::io::{BufReader, BufWriter};
 use rand::Rng;
 use std::collections::{HashSet, HashMap};
 
-use color_eyre::eyre::Result;
+use color_eyre::eyre::{Context, Result};
 
 use serde_derive::{Deserialize, Serialize};
 
@@ -21,7 +21,7 @@ impl Grid {
         Grid {
             grid : (0..size*size).map(|_| HashSet::new()).collect(),
             total_size : size*size,
-            size : size,
+            size,
         }
     }
 
@@ -34,7 +34,7 @@ impl Grid {
         grid
     }
 
-    fn get_neighbours(&self, index : usize, point : usize) -> Vec<usize> {
+    pub fn get_neighbours(&self, index : usize, point : usize) -> Vec<usize> {
         let mut neighbours : Vec<usize> = vec![];
 
         neighbours.extend(self.grid[index].iter());
@@ -45,22 +45,22 @@ impl Grid {
         neighbours
     }
 
-    fn get_position(&self, index : usize) -> (usize, usize) {
+    pub fn get_position(&self, index : usize) -> (usize, usize) {
         (index % self.total_size, index / self.total_size)
     }
 
-    fn get_index(&self, x : usize, y : usize) -> usize {
+    pub fn get_index(&self, x : usize, y : usize) -> usize {
         x + self.size * y
     }
 
-    fn find_point(&self, point : usize) -> Option<(usize, usize)> {
-        for (index, pos) in self.grid.iter().enumerate() {
-            if pos.contains(&point) {
-                return Some(self.get_position(index));
-            }
-        }
-        None
-    }
+    // fn find_point(&self, point : usize) -> Option<(usize, usize)> {
+    //     for (index, pos) in self.grid.iter().enumerate() {
+    //         if pos.contains(&point) {
+    //             return Some(self.get_position(index));
+    //         }
+    //     }
+    //     None
+    // }
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -70,7 +70,7 @@ pub struct Timeline {
     // Mapping between point and their route
     routes : HashMap<usize, Vec<usize>>, // For each point where it is in each epoch
 
-    ephocs : usize,
+    epohcs : usize,
 }
 
 impl Timeline {
@@ -78,7 +78,7 @@ impl Timeline {
         Timeline {
             timeline : vec![],
             routes : HashMap::new(),
-            ephocs : 0,
+            epohcs : 0,
         }
     }
 
@@ -93,13 +93,15 @@ impl Timeline {
         );
         self.timeline.push(new_grid);
 
-        self.ephocs += 1;
+        self.epohcs += 1;
     }
+
+    pub fn epochs(&self) -> usize { self.epohcs }
 }
 
-pub fn create_timeline(size : usize, points : usize, ephocs : usize) -> Timeline {
+pub fn create_timeline(size : usize, points : usize, epohcs : usize) -> Timeline {
     let mut timeline = Timeline::new();
-    for _ in 0..ephocs {
+    for _ in 0..epohcs {
         timeline.add_epoch(Grid::new_randomly_filled(size, points));
     }
     timeline
@@ -117,5 +119,7 @@ pub fn retrieve_timeline(file_name : &str) -> Result<Timeline> {
     let file = File::open(file_name)?;
     let reader = BufReader::new(file);
 
-    Ok(serde_json::from_reader(reader)?)
+    Ok(serde_json::from_reader(reader).wrap_err_with(
+        || format!("Failed to parse struct Timeline from file '{:}'", file_name)
+    )? )
 }

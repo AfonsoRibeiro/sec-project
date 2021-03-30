@@ -11,7 +11,7 @@ use grid::grid::retrieve_timeline;
 struct Opt {
 
     #[structopt(name = "server", long, default_value = "http://[::1]:50051")]
-    server_url : String, // TODO
+    server_url : String,
 
     #[structopt(name = "id", long)]
     idx : usize,
@@ -28,7 +28,11 @@ async fn main() -> Result<()> {
 
     let timeline = retrieve_timeline(&opt.grid_file)?;
 
-    println!("{:?}", timeline);
+    proofing_system::start_proofer(opt.idx, timeline).await?;
+
+    // for epoch in 0..timeline.epochs() {
+
+    // }
 
     Ok(())
 }

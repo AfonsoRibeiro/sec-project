@@ -34,7 +34,7 @@ impl LocationStorage for MyLocationStorage {
     }
 }
 
-async fn client_server() -> Result<()> {
+async fn start_server() -> Result<()> {
     let addr = "[::1]:50051".parse().unwrap();
     let greeter = MyLocationStorage::default();
 
