@@ -66,7 +66,10 @@ impl Grid {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Timeline {
     timeline : Vec<Grid>,
-    wisw : HashMap<usize, HashSet<usize>>,
+
+    // Mapping between point and their route
+    routes : HashMap<usize, Vec<usize>>, // For each point where it is in each epoch
+
     ephocs : usize,
 }
 
@@ -74,14 +77,22 @@ impl Timeline {
     fn new() -> Timeline {
         Timeline {
             timeline : vec![],
-            wisw : HashMap::new(),
+            routes : HashMap::new(),
             ephocs : 0,
         }
     }
 
     fn add_epoch(&mut self, new_grid : Grid) {
+        new_grid.grid.iter().enumerate().for_each( |(index, square)|
+            square.iter().for_each( |point|
+                match self.routes.get_mut(point) {
+                    Some(route) => { route.push(index); }
+                    None => { self.routes.insert(*point, vec![index]); }
+                }
+            )
+        );
         self.timeline.push(new_grid);
-        // TODO where is who
+
         self.ephocs += 1;
     }
 }

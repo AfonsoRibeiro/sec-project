@@ -8,13 +8,13 @@ use grid::grid::save_timeline; //::save_timeline;
 #[structopt(name = "Grid", about = "Creates a grid and a timeline so points can know locations")]
 struct Opt {
 
-    #[structopt(short, long, default_value = "10")]
+    #[structopt(short, long, default_value = "5")]
     size : usize,
 
     #[structopt(short, long, default_value = "100")]
     points : usize,
 
-    #[structopt(short, long, default_value = "100")]
+    #[structopt(short, long, default_value = "3")]
     epochs : usize,
 
     #[structopt(short, long, default_value = "grid/grid.txt")]
