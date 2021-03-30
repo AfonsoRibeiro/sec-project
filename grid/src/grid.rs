@@ -1,8 +1,7 @@
-
 use std::fs::File;
 use std::io::{BufReader, BufWriter};
 use rand::Rng;
-use std::collections::HashSet;
+use std::collections::{HashSet, HashMap};
 
 use color_eyre::eyre::Result;
 
@@ -67,6 +66,7 @@ impl Grid {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Timeline {
     timeline : Vec<Grid>,
+    wisw : HashMap<usize, HashSet<usize>>,
     ephocs : usize,
 }
 
@@ -74,12 +74,14 @@ impl Timeline {
     fn new() -> Timeline {
         Timeline {
             timeline : vec![],
+            wisw : HashMap::new(),
             ephocs : 0,
         }
     }
 
     fn add_epoch(&mut self, new_grid : Grid) {
         self.timeline.push(new_grid);
+        // TODO where is who
         self.ephocs += 1;
     }
 }
@@ -100,7 +102,7 @@ pub fn save_timeline(file_name : &str, timeline : &Timeline) -> Result<()> {
     Ok(())
 }
 
-pub fn retrive_timeline(file_name : &str) -> Result<Timeline> {
+pub fn retrieve_timeline(file_name : &str) -> Result<Timeline> {
     let file = File::open(file_name)?;
     let reader = BufReader::new(file);
 

@@ -1,8 +1,10 @@
-mod client_client_comunication;
-mod client_server_comunication;
+mod proofing_system;
+mod reporting;
 
 use structopt::StructOpt;
 use color_eyre::eyre::Result;
+
+use grid::grid::retrieve_timeline;
 
 #[derive(StructOpt)]
 #[structopt(name = "Client", about = "Reporting and verifying locations since 99.")]
@@ -24,6 +26,9 @@ async fn main() -> Result<()> {
 
     let opt = Opt::from_args();
 
+    let timeline = retrieve_timeline(&opt.grid_file)?;
+
+    println!("{:?}", timeline);
 
     Ok(())
 }

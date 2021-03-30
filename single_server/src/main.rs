@@ -1,4 +1,4 @@
-mod client_comunication;
+mod validating;
 
 //use structopt::StructOpt;
 use color_eyre::eyre::Result;
