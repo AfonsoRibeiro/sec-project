@@ -1,10 +1,12 @@
 mod proofing_system;
 mod reporting;
 
+use std::{thread, time};
+
 use structopt::StructOpt;
 use color_eyre::eyre::Result;
 
-use grid::grid::retrieve_timeline;
+use grid::grid::{get_neighbours_at_epoch, retrieve_timeline};
 
 #[derive(StructOpt)]
 #[structopt(name = "Client", about = "Reporting and verifying locations since 99.")]
@@ -24,15 +26,38 @@ struct Opt {
 async fn main() -> Result<()> {
     color_eyre::install()?;
 
+    println!("Starting");
+
     let opt = Opt::from_args();
 
     let timeline = retrieve_timeline(&opt.grid_file)?;
 
-    proofing_system::start_proofer(opt.idx, timeline).await?;
+    // TODO check if idx in grid
 
-    // for epoch in 0..timeline.epochs() {
+    #[allow(unused_must_use)] { // IS THIS RIGHT
+        proofing_system::start_proofer(opt.idx, timeline);
+    }
 
-    // }
+    let timeline = retrieve_timeline(&opt.grid_file)?;
+
+    thread::sleep(time::Duration::from_millis(1000));
+
+    for epoch in 0..timeline.epochs() {
+        println!("EPOCH: {:}", epoch);
+        match get_neighbours_at_epoch(&timeline, opt.idx, epoch) {
+            Some(neighbours) => {
+                #[allow(unused_must_use)]
+                for id_dest in neighbours {
+                    println!("Getting proof from {:}", id_dest);
+                    proofing_system::request_location_proof(opt.idx, epoch, id_dest); // TODO should not just end procces FIX
+                }
+                // TODO : Wait for responses
+            }
+            None => panic!("Idx from args doens't exist in grid.") // Should never happen
+        }
+
+        thread::sleep(time::Duration::from_millis(2000));
+    }
 
     Ok(())
 }

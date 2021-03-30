@@ -1,5 +1,3 @@
-use std::{u32, usize};
-
 use color_eyre::eyre::{Context, Result};
 
 use grid::grid::Timeline;
@@ -38,7 +36,6 @@ impl LocationProof for Proofer {
         &self,
         request: Request<RequestLocationProofRequest>,
     ) -> Result<Response<RequestLocationProofResponse>, Status> {
-        println!("Got a request from {:?}", request.remote_addr());
 
         Ok(Response::new(RequestLocationProofResponse {proof : None}))
     }
@@ -62,7 +59,7 @@ pub async fn start_proofer(idx : usize, timeline : Timeline) -> Result<()> {
 
 //let my_addr = format!("[::1]:6{:04}", opt.idx); // PORT: 6xxxx
 
-async fn request_location_proof(idx : usize, epoch : usize, id_dest : usize) -> Result<()> {
+pub async fn request_location_proof(idx : usize, epoch : usize, id_dest : usize) -> Result<()> {
 
     let mut client = LocationProofClient::connect(get_url(id_dest)).await.wrap_err_with(
         || format!("Failed to connect to client with id: {:}.", id_dest)

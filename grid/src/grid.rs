@@ -3,7 +3,7 @@ use std::io::{BufReader, BufWriter};
 use rand::Rng;
 use std::collections::{HashSet, HashMap};
 
-use color_eyre::eyre::{Context, Result};
+use color_eyre::{eyre::{Context, Result}, owo_colors::OwoColorize};
 
 use serde_derive::{Deserialize, Serialize};
 
@@ -34,22 +34,31 @@ impl Grid {
         grid
     }
 
-    pub fn get_neighbours(&self, index : usize, point : usize) -> Vec<usize> {
+    fn get_neighbours(&self, index : usize, point : usize) -> Vec<usize> {
         let mut neighbours : Vec<usize> = vec![];
 
-        neighbours.extend(self.grid[index].iter());
-        neighbours.retain(|&p| p != point);
+        let (x, y) = self.get_position(index);
 
-        //TODO add rest of neighbours
+        let lower_x = if x == 0 {x} else {x-1};
+        let lower_y = if y == 0 {y} else {y-1};
+        let upper_x = if x+1 == self.size {x} else {x+1};
+        let upper_y = if y+1 == self.size {x} else {y+1};
+
+        for x in lower_x..=upper_x {
+            for y in lower_y..=upper_y {
+                neighbours.extend( self.grid[self.get_index(x, y)].iter() );
+            }
+        }
+        neighbours.retain(|&p| p != point); // remove itself
 
         neighbours
     }
 
-    pub fn get_position(&self, index : usize) -> (usize, usize) {
+    fn get_position(&self, index : usize) -> (usize, usize) {
         (index % self.total_size, index / self.total_size)
     }
 
-    pub fn get_index(&self, x : usize, y : usize) -> usize {
+    fn get_index(&self, x : usize, y : usize) -> usize {
         x + self.size * y
     }
 
@@ -97,6 +106,16 @@ impl Timeline {
     }
 
     pub fn epochs(&self) -> usize { self.epohcs }
+}
+
+// Needs to be safe!
+
+pub fn get_neighbours_at_epoch(timeline : &Timeline, point : usize, epohc : usize) -> Option<Vec<usize>> {
+    if epohc >= timeline.epohcs || !timeline.routes.contains_key(&point) { return None; }
+
+    let index = timeline.routes[&point][epohc];
+
+    Some( timeline.timeline[epohc].get_neighbours(index, point) )
 }
 
 pub fn create_timeline(size : usize, points : usize, epohcs : usize) -> Timeline {
