@@ -8,7 +8,11 @@ service LocationProof {
 }
 
 message Proof {
-    string proving = 1;
+    uint32 idx_req = 1;
+    uint32 loc_x = 2;
+    uint32 loc_y = 3;
+    uint32 epoch = 4;
+    uint32 idx_ass = 5;
 }
 
 message RequestLocationProofRequest {

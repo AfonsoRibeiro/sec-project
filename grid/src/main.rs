@@ -1,6 +1,5 @@
 mod grid;
 
-use std::fs::File;
 use structopt::StructOpt;
 use color_eyre::eyre::Result;
 
@@ -25,12 +24,8 @@ fn main() -> Result<()> {
     color_eyre::install()?;
 
     let opt = Opt::from_args();
-    // let mut stdout = std::io::stdout();
-
-    let file = File::create(opt.file)?;
 
     let timeline = grid::create_timeline(opt.size, opt.points, opt.epochs);
-    serde_json::to_writer(file, &timeline)?;
 
-    Ok(())
+    grid::save_timeline(&opt.file, &timeline)
 }

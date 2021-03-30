@@ -1,5 +1,10 @@
-use std::collections::HashSet;
+
+use std::fs::File;
+use std::io::{BufReader, BufWriter};
 use rand::Rng;
+use std::collections::HashSet;
+
+use color_eyre::eyre::Result;
 
 use serde_derive::{Deserialize, Serialize};
 
@@ -30,11 +35,26 @@ impl Grid {
         grid
     }
 
+    fn get_neighbours(&self, index : usize, point : usize) -> Vec<usize> {
+        let mut neighbours : Vec<usize> = vec![];
+
+        neighbours.extend(self.grid[index].iter());
+        neighbours.retain(|&p| p != point);
+
+        //TODO add rest of neighbours
+
+        neighbours
+    }
+
     fn get_position(&self, index : usize) -> (usize, usize) {
         (index % self.total_size, index / self.total_size)
     }
 
-    pub fn find_point(&self, point : usize) -> Option<(usize, usize)> {
+    fn get_index(&self, x : usize, y : usize) -> usize {
+        x + self.size * y
+    }
+
+    fn find_point(&self, point : usize) -> Option<(usize, usize)> {
         for (index, pos) in self.grid.iter().enumerate() {
             if pos.contains(&point) {
                 return Some(self.get_position(index));
@@ -70,4 +90,19 @@ pub fn create_timeline(size : usize, points : usize, ephocs : usize) -> Timeline
         timeline.add_epoch(Grid::new_randomly_filled(size, points));
     }
     timeline
+}
+
+pub fn save_timeline(file_name : &str, timeline : &Timeline) -> Result<()> {
+    let file = File::create(file_name)?;
+
+    serde_json::to_writer(BufWriter::new(file), timeline)?;
+
+    Ok(())
+}
+
+pub fn retrive_timeline(file_name : &str) -> Result<Timeline> {
+    let file = File::open(file_name)?;
+    let reader = BufReader::new(file);
+
+    Ok(serde_json::from_reader(reader)?)
 }

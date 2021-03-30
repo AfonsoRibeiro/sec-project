@@ -1,0 +1,3 @@
+Comunication between clients is not confidential. But should the proofs sent be encrypted?
+
+Does the server need to store the state??
