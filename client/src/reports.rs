@@ -4,6 +4,7 @@ use protos::location_storage::{SubmitLocationReportRequest, ObtainLocationReport
 use protos::location_storage::location_storage_client::LocationStorageClient;
 
 
+
 async fn obtain_location_report(idx : usize, epoch : usize, url : String) -> Result<()> {
 
     let mut client = LocationStorageClient::connect(url).await?;

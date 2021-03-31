@@ -1,5 +1,5 @@
 mod proofing_system;
-mod reporting;
+mod reports;
 
 use std::{thread, time};
 

@@ -3,7 +3,7 @@ use std::io::{BufReader, BufWriter};
 use rand::Rng;
 use std::collections::{HashSet, HashMap};
 
-use color_eyre::{eyre::{Context, Result}, owo_colors::OwoColorize};
+use color_eyre::eyre::{Context, Result};
 
 use serde_derive::{Deserialize, Serialize};
 
