@@ -1,8 +1,8 @@
 use color_eyre::eyre::{Context, Result};
 
 use grid::grid::Timeline;
-
 use std::sync::Arc;
+use eyre::eyre;
 
 use tonic::{transport::Server, Request, Response, Status};
 
@@ -104,18 +104,13 @@ pub async fn request_location_proof(idx : usize, epoch : usize, id_dest : usize)
         epoch: epoch as u32,
     });
 
-    let response = client.request_location_proof(request).await;
-
     match client.request_location_proof(request).await {
         Ok(response) => {
-            match response.get_ref().proof {
-                Some(proof) => { }
-                None => { }
-                _ => {}
+            match &response.get_ref().proof {
+                Some(proof) => { Ok( Proof::default())}
+                None => { Err(eyre!("Something failed."))  }
             }
         }
-        Err(Status) => {}
-        _ => {}
+        Err(Status) => { Err(eyre!("Something failed.")) }
     }
-    Ok(Proof::default())
 }
