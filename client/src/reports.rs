@@ -4,6 +4,17 @@ use protos::location_storage::{SubmitLocationReportRequest, ObtainLocationReport
 use protos::location_storage::location_storage_client::LocationStorageClient;
 
 
+async fn submit_location_report(idx : usize, epoch : usize) -> Result<()> {
+
+    let request = tonic::Request::new(SubmitLocationReportRequest {
+        idx: idx as u32,
+        epoch: epoch as u32,
+        report: ,
+    });
+
+    Ok(())
+}
+
 
 async fn obtain_location_report(idx : usize, epoch : usize, url : String) -> Result<()> {
 

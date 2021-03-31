@@ -93,7 +93,7 @@ pub async fn start_proofer(idx : usize, timeline : Arc<Timeline>) -> Result<()> 
 
 //let my_addr = format!("[::1]:6{:04}", opt.idx); // PORT: 6xxxx
 
-pub async fn request_location_proof(idx : usize, epoch : usize, id_dest : usize) -> Result<()> {
+pub async fn request_location_proof(idx : usize, epoch : usize, id_dest : usize) -> Result<Proof> {
 
     let mut client = LocationProofClient::connect(get_url(id_dest)).await.wrap_err_with(
         || format!("Failed to connect to client with id: {:}.", id_dest)
@@ -104,9 +104,18 @@ pub async fn request_location_proof(idx : usize, epoch : usize, id_dest : usize)
         epoch: epoch as u32,
     });
 
-    let response = client.request_location_proof(request).await?;
+    let response = client.request_location_proof(request).await;
 
-    println!("RESPONSE={:?}", response);
-
-    Ok(())
+    match client.request_location_proof(request).await {
+        Ok(response) => {
+            match response.get_ref().proof {
+                Some(proof) => { }
+                None => { }
+                _ => {}
+            }
+        }
+        Err(Status) => {}
+        _ => {}
+    }
+    Ok(Proof::default())
 }
