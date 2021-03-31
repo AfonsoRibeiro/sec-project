@@ -7,7 +7,7 @@ use structopt::StructOpt;
 use std::sync::Arc;
 use color_eyre::eyre::Result;
 
-use grid::grid::{get_neighbours_at_epoch, retrieve_timeline};
+use grid::grid::{Timeline, retrieve_timeline};
 
 #[derive(StructOpt)]
 #[structopt(name = "Client", about = "Reporting and verifying locations since 99.")]
@@ -41,7 +41,7 @@ async fn main() -> Result<()> {
 
     for epoch in 0..timeline.epochs() {
         println!("EPOCH: {:}", epoch);
-        match get_neighbours_at_epoch(&timeline, opt.idx, epoch) {
+        match timeline.get_neighbours_at_epoch(opt.idx, epoch) {
             Some(neighbours) => {
                 #[allow(unused_must_use)]
                 for id_dest in neighbours {

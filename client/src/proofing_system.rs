@@ -8,6 +8,7 @@ use tonic::{transport::Server, Request, Response, Status};
 
 use protos::location_proof::location_proof_client::LocationProofClient;
 use protos::location_proof::location_proof_server::{LocationProof, LocationProofServer};
+use std::convert::TryFrom;
 
 use protos::location_proof::{RequestLocationProofRequest, RequestLocationProofResponse, Proof};
 
@@ -21,12 +22,14 @@ fn get_url(idx : usize) -> String {
 
 // As Server
 struct Proofer {
-    timeline : Arc<Timeline>,
+    idx : usize,
+    timeline : Arc<Timeline>
 }
 
 impl Proofer {
-    fn new(timeline : Arc<Timeline>) -> Proofer {
+    fn new(idx : usize, timeline : Arc<Timeline>) -> Proofer {
         Proofer {
+            idx,
             timeline,
         }
     }
@@ -39,15 +42,42 @@ impl LocationProof for Proofer {
         request: Request<RequestLocationProofRequest>,
     ) -> Result<Response<RequestLocationProofResponse>, Status> {
 
+        let result_req_idx = usize::try_from(request.get_ref().idx);
+        if result_req_idx.is_err() || !self.timeline.is_point(result_req_idx.unwrap()) {
+            return Err(Status::invalid_argument(format!("Not a valid id: {:}.", result_req_idx.unwrap())));
+        }        
+        let req_idx = result_req_idx.unwrap();
 
+        let result_req_epoch = usize::try_from(request.get_ref().epoch);
+        if result_req_epoch.is_err() || self.timeline.epochs() <= result_req_epoch.unwrap() {
+            return Err(Status::invalid_argument(format!("Not a valid epoch: {:}.", result_req_epoch.unwrap())));
+        }
+        let epoch = result_req_epoch.unwrap();
 
-        Ok(Response::new(RequestLocationProofResponse {proof : None}))
+        match self.timeline.get_neighbours_at_epoch(self.idx, epoch) { // Maybe this verification is armful because it wont allow testing with byzantine users
+            Some(neighbours) => { 
+                if neighbours.iter().any(|&i| i == req_idx) { 
+                    Ok(Response::new(RequestLocationProofResponse {
+                        proof : Some (Proof {
+                            idx_req : req_idx as u32,
+                            loc : self.timeline.get_index_at_epoch(req_idx, epoch).unwrap() as u32,
+                            epoch: epoch as u32,
+                            idx_ass: self.idx as u32,
+                        })
+                    
+                    })) 
+                } else {
+                    Err(Status::not_found("Can't prove that we are neighbours."))
+                }
+            }
+            None => Err(Status::unknown("Will never happen."))
+         }
     }
 }
 
 pub async fn start_proofer(idx : usize, timeline : Arc<Timeline>) -> Result<()> {
     let addr = get_address(idx).parse()?;
-    let proofer = Proofer::new(timeline);
+    let proofer = Proofer::new(idx, timeline);
 
     println!("LocationProofServer listening on {}", addr);
 

@@ -54,7 +54,7 @@ impl Grid {
         neighbours
     }
 
-    fn get_position(&self, index : usize) -> (usize, usize) {
+    pub fn get_position(&self, index : usize) -> (usize, usize) {
         (index % self.total_size, index / self.total_size)
     }
 
@@ -79,7 +79,7 @@ pub struct Timeline {
     // Mapping between point and their route
     routes : HashMap<usize, Vec<usize>>, // For each point where it is in each epoch
 
-    epohcs : usize,
+    epochs : usize,
 }
 
 impl Timeline {
@@ -87,7 +87,7 @@ impl Timeline {
         Timeline {
             timeline : vec![],
             routes : HashMap::new(),
-            epohcs : 0,
+            epochs : 0,
         }
     }
 
@@ -102,29 +102,37 @@ impl Timeline {
         );
         self.timeline.push(new_grid);
 
-        self.epohcs += 1;
+        self.epochs += 1;
     }
 
-    pub fn epochs(&self) -> usize { self.epohcs }
+    pub fn epochs(&self) -> usize { self.epochs }
+
+    pub fn is_point(&self, point : usize) -> bool { self.routes.contains_key(&point) }
+
+    pub fn get_neighbours_at_epoch(&self, point : usize, epoch : usize) -> Option<Vec<usize>> {
+        if epoch >= self.epochs || !self.routes.contains_key(&point) { return None; }
+    
+        let index = self.routes[&point][epoch];
+    
+        Some( self.timeline[epoch].get_neighbours(index, point) )
+    }
+    
+    pub fn get_index_at_epoch(&self, point : usize, epoch : usize) -> Option<usize> {
+        if epoch >= self.epochs { return None; }
+
+        Some(self.routes[&point][epoch])
+    }
+
+    pub fn create_timeline(size : usize, points : usize, epochs : usize) -> Timeline {
+        let mut timeline = Timeline::new();
+        for _ in 0..epochs {
+            timeline.add_epoch(Grid::new_randomly_filled(size, points));
+        }
+        timeline
+    }
 }
 
 // Needs to be safe!
-
-pub fn get_neighbours_at_epoch(timeline : &Timeline, point : usize, epohc : usize) -> Option<Vec<usize>> {
-    if epohc >= timeline.epohcs || !timeline.routes.contains_key(&point) { return None; }
-
-    let index = timeline.routes[&point][epohc];
-
-    Some( timeline.timeline[epohc].get_neighbours(index, point) )
-}
-
-pub fn create_timeline(size : usize, points : usize, epohcs : usize) -> Timeline {
-    let mut timeline = Timeline::new();
-    for _ in 0..epohcs {
-        timeline.add_epoch(Grid::new_randomly_filled(size, points));
-    }
-    timeline
-}
 
 pub fn save_timeline(file_name : &str, timeline : &Timeline) -> Result<()> {
     let file = File::create(file_name)?;
