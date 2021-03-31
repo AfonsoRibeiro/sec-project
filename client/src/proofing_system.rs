@@ -2,6 +2,8 @@ use color_eyre::eyre::{Context, Result};
 
 use grid::grid::Timeline;
 
+use std::sync::Arc;
+
 use tonic::{transport::Server, Request, Response, Status};
 
 use protos::location_proof::location_proof_client::LocationProofClient;
@@ -19,11 +21,11 @@ fn get_url(idx : usize) -> String {
 
 // As Server
 struct Proofer {
-    timeline : Timeline,
+    timeline : Arc<Timeline>,
 }
 
 impl Proofer {
-    fn new(timeline : Timeline) -> Proofer {
+    fn new(timeline : Arc<Timeline>) -> Proofer {
         Proofer {
             timeline,
         }
@@ -37,11 +39,13 @@ impl LocationProof for Proofer {
         request: Request<RequestLocationProofRequest>,
     ) -> Result<Response<RequestLocationProofResponse>, Status> {
 
+
+
         Ok(Response::new(RequestLocationProofResponse {proof : None}))
     }
 }
 
-pub async fn start_proofer(idx : usize, timeline : Timeline) -> Result<()> {
+pub async fn start_proofer(idx : usize, timeline : Arc<Timeline>) -> Result<()> {
     let addr = get_address(idx).parse()?;
     let proofer = Proofer::new(timeline);
 

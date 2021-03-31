@@ -7,10 +7,6 @@ service LocationMaster {
     rpc ObtainUsersAtLocation (ObtainUsersAtLocationRequest) returns (ObtainUsersAtLocationResponse) {}
 }
 
-message Report {
-    string loc = 1;
-}
-
 message ObtainLocationReportRequest {
     uint32 idx = 1;
     uint32 epoch = 2;

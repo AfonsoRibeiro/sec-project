@@ -4,6 +4,7 @@ mod reports;
 use std::{thread, time};
 
 use structopt::StructOpt;
+use std::sync::Arc;
 use color_eyre::eyre::Result;
 
 use grid::grid::{get_neighbours_at_epoch, retrieve_timeline};
@@ -30,15 +31,11 @@ async fn main() -> Result<()> {
 
     let opt = Opt::from_args();
 
-    let timeline = retrieve_timeline(&opt.grid_file)?;
+    let timeline = Arc::new(retrieve_timeline(&opt.grid_file)?);
 
     // TODO check if idx in grid
 
-    #[allow(unused_must_use)] { // IS THIS RIGHT
-        proofing_system::start_proofer(opt.idx, timeline);
-    }
-
-    let timeline = retrieve_timeline(&opt.grid_file)?;
+    tokio::spawn(proofing_system::start_proofer(opt.idx, timeline.clone()));
 
     thread::sleep(time::Duration::from_millis(1000));
 
