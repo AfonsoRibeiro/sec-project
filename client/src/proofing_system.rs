@@ -12,6 +12,8 @@ use std::convert::TryFrom;
 
 use protos::location_proof::{RequestLocationProofRequest, RequestLocationProofResponse, Proof};
 
+use futures::future::Future;
+
 fn get_address(idx : usize) -> String {
     format!("[::1]:6{:04}", idx)
 }
@@ -64,7 +66,6 @@ impl LocationProof for Proofer {
                             epoch: epoch as u32,
                             idx_ass: self.idx as u32,
                         })
-                    
                     })) 
                 } else {
                     Err(Status::not_found("Can't prove that we are neighbours."))
