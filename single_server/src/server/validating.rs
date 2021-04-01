@@ -1,6 +1,6 @@
 use color_eyre::eyre::Result;
 
-use tonic::{transport::Server, Request, Response, Status};
+use tonic::{Request, Response, Status};
 
 use protos::location_storage::location_storage_server::{LocationStorage, LocationStorageServer};
 use protos::location_storage::{SubmitLocationReportRequest, SubmitLocationReportResponse,
@@ -32,18 +32,4 @@ impl LocationStorage for MyLocationStorage {
 
         Ok(Response::new(reply))
     }
-}
-
-async fn start_server() -> Result<()> {
-    let addr = "[::1]:50051".parse().unwrap();
-    let greeter = MyLocationStorage::default();
-
-    println!("LocationStorageServer listening on {}", addr);
-
-    Server::builder()
-        .add_service(LocationStorageServer::new(greeter))
-        .serve(addr)
-        .await?;
-
-    Ok(())
 }
