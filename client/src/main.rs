@@ -5,6 +5,7 @@ use std::{thread, time, usize};
 
 use structopt::StructOpt;
 use std::sync::Arc;
+use std::task::Poll;
 use color_eyre::eyre::Result;
 
 use grid::grid::{Timeline, retrieve_timeline};
@@ -51,10 +52,19 @@ async fn main() -> Result<()> {
                     proofing_system::request_location_proof(opt.idx, epoch, id_dest)));
                 
                 let count = 0;
-                let n_insuccess = 0;
-                while count < neighbours.len() && count + n_insuccess == neighbours.len() {
-                    responses.poll_next();
-                }   
+                while count < neighbours.len() {
+                    match responses.poll_next_unpin() {
+                        Poll::Ready(Some(x)) => {
+                            count += 1;
+                        }  
+                        Poll::Ready(None) => {
+                            break;
+                        }
+                        Poll::Pending =>{
+
+                        }
+                    }
+                }
             }
             None => panic!("Idx from args doens't exist in grid.") // Should never happen
         }
