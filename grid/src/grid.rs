@@ -55,7 +55,7 @@ impl Grid {
     }
 
     pub fn get_position(&self, index : usize) -> (usize, usize) {
-        (index % self.total_size, index / self.total_size)
+        (index % self.size, index / self.size)
     }
 
     fn get_index(&self, x : usize, y : usize) -> usize {
