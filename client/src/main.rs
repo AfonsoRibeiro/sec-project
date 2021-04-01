@@ -5,12 +5,16 @@ use std::{thread, time, usize};
 
 use structopt::StructOpt;
 use std::sync::Arc;
-use std::task::Poll;
 use color_eyre::eyre::Result;
 
 use grid::grid::{Timeline, retrieve_timeline};
 
-use futures::{StreamExt, stream::futures_unordered::FuturesUnordered, stream::Stream};
+use futures::{
+    future::{Fuse, FusedFuture, FutureExt},
+    stream::{FusedStream, FuturesUnordered, Stream, StreamExt},
+    pin_mut,
+    select,
+};
 
 #[derive(StructOpt)]
 #[structopt(name = "Client", about = "Reporting and verifying locations since 99.")]
@@ -46,23 +50,25 @@ async fn main() -> Result<()> {
         println!("EPOCH: {:}", epoch);
         match timeline.get_neighbours_at_epoch(opt.idx, epoch) { // TODO should not just end procces FIX
             Some(neighbours) => {
-                let responses  = FuturesUnordered::new(); 
+                let mut responses  = FuturesUnordered::new(); 
                 //Wait for responses
                 neighbours.iter().for_each(|&id_dest| responses.push(
                     proofing_system::request_location_proof(opt.idx, epoch, id_dest)));
                 
-                let count = 0;
-                while count < neighbours.len() {
-                    match responses.poll_next_unpin() {
-                        Poll::Ready(Some(x)) => {
-                            count += 1;
-                        }  
-                        Poll::Ready(None) => {
-                            break;
-                        }
-                        Poll::Pending =>{
-
-                        }
+                let count: usize = 0;
+                
+                loop {
+                    select! {
+                        res = responses.select_next_some() => {
+                            match  res {
+                                Ok(v) => {count += 1}
+                                Err(e) => { }
+                            }
+                            if count >= 2 { //TODO change this number
+                                break;
+                            }
+                        }    
+                        complete => break,
                     }
                 }
             }
