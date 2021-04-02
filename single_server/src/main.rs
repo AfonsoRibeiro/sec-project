@@ -1,4 +1,4 @@
-mod validating;
+mod server;
 
 use structopt::StructOpt;
 use color_eyre::eyre::Result;
@@ -20,6 +20,7 @@ async fn main() -> Result<()> {
 
     let opt = Opt::from_args();
 
+    server::start_server(opt.server_addr).await?;
 
     Ok(())
 }
