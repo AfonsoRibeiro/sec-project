@@ -1,20 +1,16 @@
 mod proofing_system;
 mod reports;
 
-use std::{thread, time, usize};
+use std::{thread, time};
 
 use structopt::StructOpt;
 use std::sync::Arc;
 use color_eyre::eyre::Result;
 
-use grid::grid::{Timeline, retrieve_timeline};
+use grid::grid::retrieve_timeline;
 
-use futures::{
-    future::{Fuse, FusedFuture, FutureExt},
-    stream::{FusedStream, FuturesUnordered, Stream, StreamExt},
-    pin_mut,
-    select,
-};
+use futures::stream::{FuturesUnordered, StreamExt};
+use futures::select;
 
 #[derive(StructOpt)]
 #[structopt(name = "Client", about = "Reporting and verifying locations since 99.")]

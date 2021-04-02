@@ -27,5 +27,6 @@ message ObtainLocationReportRequest {
 }
 
 message ObtainLocationReportResponse {
-    Report report = 1;
+    uint32 pos_x = 1;
+    uint32 pos_y = 2;
 }

@@ -1,8 +1,9 @@
 use std::{fs::File, usize};
 use std::io::{BufReader, BufWriter};
 use rand::Rng;
+use eyre::eyre;
 use std::collections::{HashSet, HashMap};
-
+use std::convert::TryFrom;
 use color_eyre::eyre::{Context, Result};
 
 use serde_derive::{Deserialize, Serialize};
@@ -129,6 +130,17 @@ impl Timeline {
             timeline.add_epoch(Grid::new_randomly_filled(size, points));
         }
         timeline
+    }
+
+    pub fn parse_valid_pos(x : u32, y : u32) -> Result<(usize, usize)> {
+        let (res_x, res_y) = (usize::try_from(x), usize::try_from(y));
+        if res_x.is_err() /* || check limits */ {
+            return Err(eyre!("Not a valid x position."));
+        }
+        if res_y.is_err() /* || check limits */ {
+            return Err(eyre!("Not a valid y position."));
+        }
+        Ok((res_x.unwrap(), res_y.unwrap()))
     }
 }
 
