@@ -261,6 +261,7 @@ name = "grid"
 version = "0.1.0"
 dependencies = [
  "color-eyre",
+ "eyre",
  "rand",
  "serde",
  "serde_derive",
