@@ -63,7 +63,8 @@ impl LocationStorage for MyLocationStorage {
         };
 
         let reply = ObtainLocationReportResponse {
-            report : Some(Report {proofs : vec![]}),
+            pos_x : 4,
+            pos_y : 5,
         };
 
         Ok(Response::new(reply))

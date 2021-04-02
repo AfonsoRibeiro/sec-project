@@ -1,3 +1,5 @@
 Comunication between clients is not confidential. But should the proofs sent be encrypted?
 
 Does the server need to store the state??
+
+How can the communication between clients be encrypted if a proof must be given?
