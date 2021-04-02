@@ -2,7 +2,7 @@ use std::{fs::File, usize};
 use std::io::{BufReader, BufWriter};
 use rand::Rng;
 use std::collections::{HashSet, HashMap};
-
+use std::convert::TryFrom;
 use color_eyre::eyre::{Context, Result};
 
 use serde_derive::{Deserialize, Serialize};
