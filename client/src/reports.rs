@@ -1,5 +1,3 @@
-use std::borrow::BorrowMut;
-
 use color_eyre::eyre::Result;
 use eyre::eyre;
 use grid::grid::Timeline;
@@ -20,10 +18,9 @@ async fn submit_location_report(idx : usize, epoch : usize, url : String, proofs
     });
 
     match client.submit_location_report(request).await {
-        Ok(_) => {
-            Ok(())
-        }
-        Err(_) => { Err(eyre!("Something failed.")) }
+        Ok(_) => Ok(()),
+        Err(status) => Err(eyre!("SubmitLocationReport failed with code {:?} and message {:?}.",
+                            status.code(), status.message())),
     }
 }
 
@@ -41,9 +38,10 @@ async fn obtain_location_report(idx : usize, epoch : usize, url : String) -> Res
         Ok(response) => {
             match Timeline::parse_valid_pos(response.get_ref().pos_x, response.get_ref().pos_y){
                 Ok(pos) => { Ok(pos)},
-                Err(err) => return Err(eyre!("Location not found."))
+                Err(err) => return Err(err)
             }
         }
-        Err(Status) => { Err(eyre!("Something failed.")) }
+        Err(status) => Err(eyre!("ObtainLocationReport failed with code {:?} and message {:?}.",
+                            status.code(), status.message())),
     }
 }

@@ -4,7 +4,7 @@ use std::convert::TryFrom;
 
 use tonic::{Request, Response, Status};
 
-use protos::location_storage::location_storage_server::{LocationStorage, LocationStorageServer};
+use protos::location_storage::location_storage_server::{LocationStorage};
 use protos::location_storage::{SubmitLocationReportRequest, SubmitLocationReportResponse,
     ObtainLocationReportRequest, ObtainLocationReportResponse, Report};
 
