@@ -17,19 +17,19 @@ impl MyLocationStorage {
     }
 
     fn parse_valid_idx(&self, idx : u32) -> Result<usize, Status> {
-        let idx = usize::try_from(idx);
-        if idx.is_err() /*|| !self.timeline.is_point(idx.unwrap())*/ {
-            return Err(Status::invalid_argument(format!("Not a valid id: {:}.", idx.unwrap())));
+        let res_idx = usize::try_from(idx);
+        if res_idx.is_err() /*|| !self.timeline.is_point(idx.unwrap())*/ {
+            return Err(Status::invalid_argument(format!("Not a valid id: {:}.", idx)));
         }
-        Ok(idx.unwrap())
+        Ok(res_idx.unwrap())
     }
 
     fn parse_valid_epoch(&self, epoch : u32) -> Result<usize, Status> {
-        let epoch = usize::try_from(epoch);
-        if epoch.is_err() /*|| self.timeline.epochs() <= result_req_epoch.unwrap()*/ {
-            return Err(Status::invalid_argument(format!("Not a valid epoch: {:}.", epoch.unwrap())));
+        let res_epoch = usize::try_from(epoch);
+        if res_epoch.is_err() /*|| self.timeline.epochs() <= result_req_epoch.unwrap()*/ {
+            return Err(Status::invalid_argument(format!("Not a valid epoch: {:}.", epoch)));
         }
-        Ok(epoch.unwrap())
+        Ok(res_epoch.unwrap())
     }
 }
 
