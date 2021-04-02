@@ -55,7 +55,7 @@ async fn main() -> Result<()> {
                 neighbours.iter().for_each(|&id_dest| responses.push(
                     proofing_system::request_location_proof(opt.idx, epoch, id_dest)));
                 
-                let count: usize = 0;
+                let mut count: usize = 0;
                 
                 loop {
                     select! {
