@@ -36,10 +36,13 @@ async fn obtain_location_report(idx : usize, epoch : usize, url : String) -> Res
         epoch: epoch as u32,
     });
 
-    let response = client.obtain_location_report(request).await?;
-
-    println!("RESPONSE={:?}", response);
-
-    Ok(())
-
+    match client.obtain_location_report(request).await {
+        Ok(response) => {
+            match &response.get_ref().report {
+                Some(report) => { Ok(())}
+                None => { Err(eyre!("Report not found."))  }
+            }
+        }
+        Err(Status) => { Err(eyre!("Something failed.")) }
+    }
 }
