@@ -3,6 +3,7 @@ use std::borrow::BorrowMut;
 use color_eyre::eyre::Result;
 use eyre::eyre;
 use grid::grid::Timeline;
+use grid::grid::parse_valid_pos;
 
 use protos::{location_proof::Proof, location_storage::{ObtainLocationReportRequest, Report, SubmitLocationReportRequest}};
 use protos::location_storage::location_storage_client::LocationStorageClient;
@@ -28,7 +29,7 @@ async fn submit_location_report(idx : usize, epoch : usize, url : String, proofs
 }
 
 
-async fn obtain_location_report(idx : usize, epoch : usize, url : String) -> Result<()> {
+async fn obtain_location_report(idx : usize, epoch : usize, url : String) -> Result<(usize, usize)> {
 
     let mut client = LocationStorageClient::connect(url).await?;
 
@@ -39,9 +40,9 @@ async fn obtain_location_report(idx : usize, epoch : usize, url : String) -> Res
 
     match client.obtain_location_report(request).await {
         Ok(response) => {
-            match (parse_valid_pos(response.get_ref().pos_x, response.get_ref().pos_y)){
-                Ok(pos) => pos,
-                Err(err) => return Err(err),
+            match parse_valid_pos(response.get_ref().pos_x, response.get_ref().pos_y){
+                Ok(pos) => { Ok(pos)},
+                Err(err) => return Err(eyre!("Location not found."))
             }
         }
         Err(Status) => { Err(eyre!("Something failed.")) }

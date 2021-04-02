@@ -1,4 +1,4 @@
-use std::{fs::File, usize};
+use std::{fs::File, num::ParseIntError, usize};
 use std::io::{BufReader, BufWriter};
 use rand::Rng;
 use std::collections::{HashSet, HashMap};
@@ -149,4 +149,15 @@ pub fn retrieve_timeline(file_name : &str) -> Result<Timeline> {
     Ok(serde_json::from_reader(reader).wrap_err_with(
         || format!("Failed to parse struct Timeline from file '{:}'", file_name)
     )? )
+}
+
+pub fn parse_valid_pos(x : u32, y : u32) -> Result<(usize, usize), String> {
+    let (res_x, res_y) = (usize::try_from(x), usize::try_from(y));
+    if res_x.is_err() /* || check limits */ {
+        return Err("Not a valid x position".to_string());
+    }
+    if res_y.is_err() /* || check limits */ {
+        return Err("Not a valid y position".to_string());
+    }
+    Ok((res_x.unwrap(), res_y.unwrap()))
 }
