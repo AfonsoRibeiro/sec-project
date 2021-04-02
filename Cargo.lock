@@ -290,6 +290,14 @@ dependencies = [
 [[package]]
 name = "ha_client"
 version = "0.1.0"
+dependencies = [
+ "color-eyre",
+ "eyre",
+ "protos",
+ "structopt",
+ "tokio",
+ "tonic",
+]
 
 [[package]]
 name = "hashbrown"
