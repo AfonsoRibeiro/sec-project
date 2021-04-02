@@ -14,6 +14,7 @@ use protos::location_proof::location_proof_server::{LocationProof, LocationProof
 use protos::location_proof::{RequestLocationProofRequest, RequestLocationProofResponse, Proof};
 
 
+
 fn get_address(idx : usize) -> String {
     format!("[::1]:6{:04}", idx)
 }

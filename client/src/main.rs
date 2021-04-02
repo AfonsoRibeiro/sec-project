@@ -7,7 +7,10 @@ use structopt::StructOpt;
 use std::sync::Arc;
 use color_eyre::eyre::Result;
 
-use grid::grid::{Timeline, retrieve_timeline};
+use grid::grid::retrieve_timeline;
+
+use futures::stream::{FuturesUnordered, StreamExt};
+use futures::select;
 
 #[derive(StructOpt)]
 #[structopt(name = "Client", about = "Reporting and verifying locations since 99.")]
@@ -41,14 +44,29 @@ async fn main() -> Result<()> {
 
     for epoch in 0..timeline.epochs() {
         println!("EPOCH: {:}", epoch);
-        match timeline.get_neighbours_at_epoch(opt.idx, epoch) {
+        match timeline.get_neighbours_at_epoch(opt.idx, epoch) { // TODO should not just end procces FIX
             Some(neighbours) => {
-                #[allow(unused_must_use)]
-                for id_dest in neighbours {
-                    println!("Getting proof from {:}", id_dest);
-                    proofing_system::request_location_proof(opt.idx, epoch, id_dest); // TODO should not just end procces FIX
+                let mut responses  = FuturesUnordered::new(); 
+                //Wait for responses
+                neighbours.iter().for_each(|&id_dest| responses.push(
+                    proofing_system::request_location_proof(opt.idx, epoch, id_dest)));
+                
+                let mut count: usize = 0;
+                
+                loop {
+                    select! {
+                        res = responses.select_next_some() => {
+                            match  res {
+                                Ok(v) => {count += 1}
+                                Err(e) => { }
+                            }
+                            if count >= 2 { //TODO change this number
+                                break;
+                            }
+                        }    
+                        complete => break,
+                    }
                 }
-                // TODO : Wait for responses
             }
             None => panic!("Idx from args doens't exist in grid.") // Should never happen
         }
