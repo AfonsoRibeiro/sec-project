@@ -52,7 +52,7 @@ async fn main() -> Result<()> {
 async fn read_commands(timeline : Arc<Timeline>, idx : usize, server : Uri) {
     print_command_msg();
 
-    let orep_pat = Regex::new(r"r [+]?(\d+)").unwrap();
+    let orep_pat = Regex::new(r"r(eport)? [+]?(\d+)").unwrap();
 
     let mut reader = BufReader::new(io::stdin());
     let mut buffer = String::new();
@@ -62,7 +62,7 @@ async fn read_commands(timeline : Arc<Timeline>, idx : usize, server : Uri) {
         reader.read_line(&mut buffer).await.unwrap(); // Trusting io (don know if it works with > )
         {
             if let Some(cap) = orep_pat.captures(buffer.trim_end()) {
-                let epoch  = cap[1].parse::<usize>();
+                let epoch  = cap[2].parse::<usize>();
                 if epoch.is_err() { print_command_msg(); continue; }
                 let _x = reports::obtain_location_report(timeline.clone(), idx, epoch.unwrap(), server.clone()).await;
                 // TODO deal with return
@@ -73,4 +73,4 @@ async fn read_commands(timeline : Arc<Timeline>, idx : usize, server : Uri) {
     }
 }
 
-fn print_command_msg() { println!("To obtain a report use: r <epoch>"); }
+fn print_command_msg() { println!("To obtain a report use: report <epoch>"); }
