@@ -125,7 +125,7 @@ async fn build_report(timeline : Arc<Timeline>, idx : usize, epoch : usize) {
     }
 }
 
-pub async fn reports_generator(timeline : Arc<Timeline>, idx : usize) -> Result<()> {
+pub async fn reports_generator(timeline : Arc<Timeline>, idx : usize) -> Result<()> { //TODO: f', create report
     let start = Instant::now() + Duration::from_millis(50);
     let mut interval = interval_at(start, Duration::from_millis(5000));
 
@@ -154,7 +154,7 @@ pub async fn request_location_proof(idx : usize, epoch : usize, id_dest : usize)
     match client.request_location_proof(request).await {
         Ok(response) => {
             match &response.get_ref().proof {
-                Some(_) => { Ok(Proof::default()) }
+                Some(_) => { Ok(Proof::default()) } //TODO
                 None => { Err(eyre!("Something failed."))  }
             }
         }
