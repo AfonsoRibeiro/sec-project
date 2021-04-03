@@ -911,7 +911,11 @@ name = "single_server"
 version = "0.1.0"
 dependencies = [
  "color-eyre",
+ "eyre",
  "protos",
+ "serde",
+ "serde_derive",
+ "serde_json",
  "structopt",
  "tokio",
  "tonic",

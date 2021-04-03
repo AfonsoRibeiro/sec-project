@@ -1,4 +1,5 @@
 mod server;
+mod storage;
 
 use structopt::StructOpt;
 use color_eyre::eyre::Result;
