@@ -1,11 +1,8 @@
-use std::{fs::File, usize};
-use std::io::{BufReader, BufWriter};
 use rand::Rng;
-use eyre::eyre;
+use std::fs::File;
+use std::io::{BufReader, BufWriter};
 use std::collections::{HashSet, HashMap};
-use std::convert::TryFrom;
 use color_eyre::eyre::{Context, Result};
-
 use serde_derive::{Deserialize, Serialize};
 
 // Grid simulated thru a single vector
@@ -81,14 +78,17 @@ pub struct Timeline {
     routes : HashMap<usize, Vec<usize>>, // For each point where it is in each epoch
 
     epochs : usize,
+
+    size : usize,
 }
 
 impl Timeline {
-    fn new() -> Timeline {
+    fn new(size : usize) -> Timeline {
         Timeline {
             timeline : vec![],
             routes : HashMap::new(),
             epochs : 0,
+            size,
         }
     }
 
@@ -106,9 +106,21 @@ impl Timeline {
         self.epochs += 1;
     }
 
+    pub fn create_timeline(size : usize, points : usize, epochs : usize) -> Timeline {
+        let mut timeline = Timeline::new(size);
+        for _ in 0..epochs {
+            timeline.add_epoch(Grid::new_randomly_filled(size, points));
+        }
+        timeline
+    }
+
     pub fn epochs(&self) -> usize { self.epochs }
 
     pub fn is_point(&self, point : usize) -> bool { self.routes.contains_key(&point) }
+
+    pub fn valid_pos(&self, x : usize, y : usize) -> bool {
+        x < self.size && y < self.size
+    }
 
     pub fn get_neighbours_at_epoch(&self, point : usize, epoch : usize) -> Option<Vec<usize>> {
         if epoch >= self.epochs || !self.routes.contains_key(&point) { return None; }
@@ -122,25 +134,6 @@ impl Timeline {
         if epoch >= self.epochs { return None; }
 
         Some(self.routes[&point][epoch])
-    }
-
-    pub fn create_timeline(size : usize, points : usize, epochs : usize) -> Timeline {
-        let mut timeline = Timeline::new();
-        for _ in 0..epochs {
-            timeline.add_epoch(Grid::new_randomly_filled(size, points));
-        }
-        timeline
-    }
-
-    pub fn parse_valid_pos(x : u32, y : u32) -> Result<(usize, usize)> {
-        let (res_x, res_y) = (usize::try_from(x), usize::try_from(y));
-        if res_x.is_err() /* || check limits */ {
-            return Err(eyre!("Not a valid x position."));
-        }
-        if res_y.is_err() /* || check limits */ {
-            return Err(eyre!("Not a valid y position."));
-        }
-        Ok((res_x.unwrap(), res_y.unwrap()))
     }
 }
 

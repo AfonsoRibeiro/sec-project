@@ -6,7 +6,11 @@ use std::convert::TryFrom;
 
 use grid::grid::Timeline;
 
+use futures::stream::{FuturesUnordered, StreamExt};
+use futures::select;
+
 use tonic::{transport::Server, Request, Response, Status};
+use tokio::time::{interval_at, Duration, Instant};
 
 use protos::location_proof::location_proof_client::LocationProofClient;
 use protos::location_proof::location_proof_server::{LocationProof, LocationProofServer};
@@ -81,7 +85,7 @@ pub async fn start_proofer(idx : usize, timeline : Arc<Timeline>) -> Result<()> 
     let addr = get_address(idx).parse()?;
     let proofer = Proofer::new(idx, timeline);
 
-    println!("LocationProofServer listening on {}", addr);
+    println!("LocationProofServer listening on {}\n", addr);
 
     Server::builder()
         .add_service(LocationProofServer::new(proofer))
@@ -93,7 +97,48 @@ pub async fn start_proofer(idx : usize, timeline : Arc<Timeline>) -> Result<()> 
 
 // As Client
 
-//let my_addr = format!("[::1]:6{:04}", opt.idx); // PORT: 6xxxx
+async fn build_report(timeline : Arc<Timeline>, idx : usize, epoch : usize) {
+    if let Some(neighbours) = timeline.get_neighbours_at_epoch(idx, epoch) {
+
+        let mut responses : FuturesUnordered<_> = neighbours.iter().map(
+            |&id_dest| request_location_proof(idx, epoch, id_dest)
+        ).collect();
+
+        let mut count: usize = 0;
+        loop {
+            select! {
+                res = responses.select_next_some() => {
+                    match  res {
+                        Ok(v) => {count += 1}
+                        Err(e) => { }
+                    }
+                    if count >= 2 { //TODO change this number
+                        break;
+                    }
+                }
+                complete => break,
+            }
+        }
+
+    } else {  // Should never happen
+        panic!("Should nerver occour : Idx {:} from args doens't exist in grid.", idx)
+    }
+}
+
+pub async fn reports_generator(timeline : Arc<Timeline>, idx : usize) -> Result<()> {
+    let start = Instant::now() + Duration::from_millis(50);
+    let mut interval = interval_at(start, Duration::from_millis(5000));
+
+    for epoch in 0..timeline.epochs() {
+        interval.tick().await;
+
+        println!("Client {:} entered epoch {:}/{:}.", idx, epoch, timeline.epochs()-1);
+
+        build_report(timeline.clone(), idx, epoch).await;
+
+    }
+    Ok(())
+}
 
 pub async fn request_location_proof(idx : usize, epoch : usize, id_dest : usize) -> Result<Proof> {
 
