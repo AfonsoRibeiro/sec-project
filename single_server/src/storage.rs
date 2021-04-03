@@ -4,111 +4,125 @@
 //Timeline Vec     < Vec<Vec< hashset > >
 //         Epoch ->    x  y ->  user
 
-use std::collections::HashMap;
+use std::{collections::{HashMap, HashSet}, fs::File, io::{BufReader, BufWriter}};
 
 use serde_derive::{Deserialize, Serialize};
-use eyre::eyre;
+use eyre::{Context, eyre};
 use color_eyre::eyre::{self, Result};
 use std::convert::TryFrom;
 
-#[derive(Debug, Deserialize, Serialize)]
-pub struct Location {
-    pos_x : usize,
-    pos_y : usize,
-}
 
 // pos_x -> pos_y -> user_id
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Grid {
-    grid : Vec<Vec<Vec<usize>>>,
+    grid : Vec<Vec<HashSet<usize>>>,
     size: usize
 }
 //epoch -> user id -> location 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Timeline {
-    routes : HashMap<usize, HashMap<usize, Location>>,
+    routes : HashMap<usize, HashMap<usize, (usize, usize)>>,
     timeline : Vec<Grid>,
-    epochs : usize, //is really necessary?
+    size: usize,
 }
 
 impl Grid {
-    fn new(size: usize) -> Grid {
-        Grid{
-            grid : vec![],
-            size : size 
-        }
-    }
 
     fn new_empty(size : usize) -> Grid {
         Grid {
-            grid :  vec![vec![vec![]; size]; size], //change
-            size : size
+            grid : (0..size).map(|_| (0..size).map(|_| HashSet::new()).collect()).collect(),
+            size
         }
     }
 
-    fn add_user_location(&mut self, pos_x : u32, pos_y : u32, idx : usize) {
-        match Grid::parse_valid_pos(pos_x, pos_y){
-            Ok(pos) => { self.grid[pos.0][pos.1].push(idx) }, 
-            Err(err) => {}  //do something 
-        }
+    fn add_user_location(&mut self, pos_x : usize, pos_y : usize, idx : usize) {
+        self.grid[pos_x][pos_y].insert(idx);
     }
 
-    fn get_neighbours(&self, pos_x : u32, pos_y : u32, idx : usize) -> Vec<usize>{ 
-        match Grid::parse_valid_pos(pos_x, pos_y){
-            Ok(pos) => {
-                let mut neighbours : Vec<usize> = vec![];
-                
-                let lower_x = if pos.0 == 0 {pos.0} else {pos.0-1};
-                let lower_y = if pos.1 == 0 {pos.1} else {pos.1-1};
-                let upper_x = if pos.0+1 == self.size {pos.0} else {pos.0+1};
-                let upper_y = if pos.1+1 == self.size {pos.0} else {pos.1+1};
+    fn get_neighbours(&self, pos_x : usize, pos_y : usize, idx : usize) -> Vec<usize>{ 
+        let mut neighbours : Vec<usize> = vec![];
+        
+        let lower_x = if pos_x == 0 {pos_x} else {pos_x-1};
+        let lower_y = if pos_y == 0 {pos_y} else {pos_y-1};
+        let upper_x = if pos_x+1 == self.size {pos_x} else {pos_x+1};
+        let upper_y = if pos_y+1 == self.size {pos_x} else {pos_y+1};
 
-                for x in lower_x..=upper_x {
-                    for y in lower_y..=upper_y {
-                        neighbours.extend(self.grid[x][y].iter());
-                    }
-                }
-                neighbours.retain(|&p| p != idx); // remove itself
-
-                neighbours
-            }, 
-
-            Err(err) => { return vec![] } //do something
+        for x in lower_x..=upper_x {
+            for y in lower_y..=upper_y {
+                neighbours.extend(self.grid[x][y].iter());
+            }
         }
+        neighbours.retain(|&p| p != idx); // remove itself
+
+        neighbours
     }
 
-    fn get_users_at_location(&self, pos_x : u32, pos_y : u32) -> Vec<usize> {
-        match Grid::parse_valid_pos(pos_x, pos_y){
-            Ok(pos) => {self.grid[pos.0][pos.1].iter().map(|&idx| idx ).collect()}, 
-            Err(err) => { return vec![] } //do something
+    fn get_users_at_location(&self, pos_x : usize, pos_y : usize) ->Vec<usize> {
+        self.grid[pos_x][pos_y].iter().map(|&idx| idx).collect()
+    }
     
-        }
-    }
-
-    pub fn parse_valid_pos(x : u32, y : u32) -> Result<(usize, usize)> {
-        let (res_x, res_y) = (usize::try_from(x), usize::try_from(y));
-        if res_x.is_err() /* || check limits */ {
-            return Err(eyre!("Not a valid x position."));
-        }
-        if res_y.is_err() /* |eyre| check limits */ {
-            return Err(eyre!("Not a valid y position."));
-        }
-        Ok((res_x.unwrap(), res_y.unwrap()))
-    }
 }
 
 impl Timeline {
-    fn new() -> Timeline {
+    pub fn new(size : usize) -> Timeline {
         Timeline {
             routes : HashMap::new(),
             timeline : vec![],
-            epochs : 0,
+            size 
         }
     }
 
-    pub fn is_point() -> bool { 
-        true
+    pub fn add_user_location_at_epoch(&mut self, epoch: usize, pos_x : usize, pos_y : usize, idx: usize) { //TODO: check if it is valid -> report
+        if let Some(user_pos) =  self.routes.get_mut(&epoch) {
+            user_pos.insert(idx,(pos_x, pos_y));
+
+        }else {
+           let mut users_loc= HashMap::new();
+           users_loc.insert(idx, (pos_x, pos_y));
+           self.routes.insert(epoch, users_loc); 
+        }
+        
+        for epoch_value in self.timeline.len()..=epoch {
+            self.timeline.push(Grid::new_empty(self.size));
+        } 
+        self.timeline[epoch].add_user_location(pos_x, pos_y, idx);
     }
 
-    fn add_user_location() {}
+    pub fn valid_pos(&self, x : usize, y : usize) -> bool {
+        x < self.size && y < self.size
+    }
+
+    pub fn get_users_at_epoch_at_location(&self, epoch: usize, pos_x : usize, pos_y : usize) -> Option<Vec<usize>> {
+        if self.timeline.len() > epoch && self.valid_pos(pos_x, pos_y){
+            Some(self.timeline[epoch].get_users_at_location(pos_x,pos_y))
+        }else {
+            None
+        }
+    }
+
+    pub fn get_user_location_at_epoch(&self, epoch: usize, idx: usize) -> Option<(usize, usize)> {
+        if let Some(user_loc ) = self.routes.get(&epoch) {
+            if let Some((x, y)) = user_loc.get(&idx) {
+                return Some((*x,*y));
+            }
+        }
+        None
+    }
+}
+
+pub fn save_storage(file_name : &str, timeline : &Timeline) -> Result<()> { //TODO: make it async, depends on how the database is updated
+    let file = File::create(file_name)?;
+
+    serde_json::to_writer(BufWriter::new(file), timeline)?;
+
+    Ok(())
+}
+
+pub fn retrieve_storage(file_name : &str) -> Result<Timeline> {
+    let file = File::open(file_name)?;
+    let reader = BufReader::new(file);
+
+    Ok(serde_json::from_reader(reader).wrap_err_with(
+        || format!("Failed to parse struct Timeline from file '{:}'", file_name)
+    )? )
 }
