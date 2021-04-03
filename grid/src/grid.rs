@@ -10,7 +10,7 @@ use serde_derive::{Deserialize, Serialize};
 
 // Grid simulated thru a single vector
 #[derive(Debug, Deserialize, Serialize)]
-pub struct Grid {
+struct Grid {
     grid : Vec<HashSet<usize>>,
     total_size : usize,
     size : usize,
@@ -55,7 +55,7 @@ impl Grid {
         neighbours
     }
 
-    pub fn get_position(&self, index : usize) -> (usize, usize) {
+    fn get_position(&self, index : usize) -> (usize, usize) {
         (index % self.size, index / self.size)
     }
 
@@ -112,12 +112,12 @@ impl Timeline {
 
     pub fn get_neighbours_at_epoch(&self, point : usize, epoch : usize) -> Option<Vec<usize>> {
         if epoch >= self.epochs || !self.routes.contains_key(&point) { return None; }
-    
+
         let index = self.routes[&point][epoch];
-    
+
         Some( self.timeline[epoch].get_neighbours(index, point) )
     }
-    
+
     pub fn get_index_at_epoch(&self, point : usize, epoch : usize) -> Option<usize> {
         if epoch >= self.epochs { return None; }
 

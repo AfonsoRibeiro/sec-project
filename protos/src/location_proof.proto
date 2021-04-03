@@ -9,7 +9,6 @@ service LocationProof {
 
 message Proof {
     uint32 idx_req = 1;
-    uint32 loc = 2;
     uint32 epoch = 3;
     uint32 idx_ass = 4;
 }

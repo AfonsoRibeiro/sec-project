@@ -3,3 +3,9 @@ Comunication between clients is not confidential. But should the proofs sent be 
 Does the server need to store the state??
 
 How can the communication between clients be encrypted if a proof must be given?
+
+TODO:
+ - tokio::interval_at for client
+ - HA_client also as access to grid, and compares server responses to expected (useful for testing)
+
+ - Server

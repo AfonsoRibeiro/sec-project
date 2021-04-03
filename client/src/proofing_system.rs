@@ -63,7 +63,6 @@ impl LocationProof for Proofer {
                     Ok(Response::new(RequestLocationProofResponse {
                         proof : Some (Proof {
                             idx_req : req_idx as u32,
-                            loc : self.timeline.get_index_at_epoch(req_idx, epoch).unwrap() as u32,
                             epoch: epoch as u32,
                             idx_ass: self.idx as u32,
                         })
