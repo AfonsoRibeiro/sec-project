@@ -8,6 +8,8 @@ use std::sync::Arc;
 use structopt::StructOpt;
 use regex::Regex;
 
+
+use tokio::time::{interval_at, Duration, Instant};
 use tokio::io::{self, AsyncBufReadExt, BufReader};
 use tonic::transport::Uri;
 
@@ -41,10 +43,34 @@ async fn main() -> Result<()> {
 
     tokio::spawn(proofing_system::start_proofer(opt.idx, timeline.clone()));
 
-    tokio::spawn(proofing_system::reports_generator(timeline.clone(), opt.idx));
+    tokio::spawn(epochs_generator(timeline.clone(), opt.idx, opt.server_url.clone()));
 
     read_commands(timeline.clone(), opt.idx, opt.server_url).await;
 
+    Ok(())
+}
+
+async fn reports_generator(timeline : Arc<Timeline>, idx : usize, epoch : usize, server_url : Uri) {
+    let proofs = proofing_system::get_proofs(timeline, idx, epoch).await;
+
+    if proofs.len() > 0 {
+        let _r = reports::submit_location_report(idx, epoch, server_url, proofs).await;  // If failed should we try and resubmit
+    } else {
+        println!("Client {:} unable to generate report for epoch {:}.", idx, epoch);
+    }
+}
+
+async fn epochs_generator(timeline : Arc<Timeline>, idx : usize, server_url : Uri) -> Result<()> { //TODO: f', create report
+    let start = Instant::now() + Duration::from_millis(50);
+    let mut interval = interval_at(start, Duration::from_millis(5000));
+
+    for epoch in 0..timeline.epochs() {
+        interval.tick().await;
+
+        println!("Client {:} entered epoch {:}/{:}.", idx, epoch, timeline.epochs()-1);
+
+        tokio::spawn(reports_generator(timeline.clone(), idx, epoch, server_url.clone()));
+    }
     Ok(())
 }
 

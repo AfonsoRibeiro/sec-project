@@ -10,7 +10,6 @@ use futures::stream::{FuturesUnordered, StreamExt};
 use futures::select;
 
 use tonic::{transport::Server, Request, Response, Status};
-use tokio::time::{interval_at, Duration, Instant};
 
 use protos::location_proof::location_proof_client::LocationProofClient;
 use protos::location_proof::location_proof_server::{LocationProof, LocationProofServer};
@@ -61,7 +60,9 @@ impl LocationProof for Proofer {
         }
         let epoch = result_req_epoch.unwrap();
 
-        match self.timeline.get_neighbours_at_epoch(self.idx, epoch) { // Maybe this verification is armful because it wont allow testing with byzantine users
+        // Maybe this verification is armful because it wont allow testing with byzantine users
+        // And the request can only be recieved by a neighbour
+        match self.timeline.get_neighbours_at_epoch(self.idx, epoch) {
             Some(neighbours) => {
                 if neighbours.iter().any(|&i| i == req_idx) {
                     Ok(Response::new(RequestLocationProofResponse {
@@ -97,49 +98,6 @@ pub async fn start_proofer(idx : usize, timeline : Arc<Timeline>) -> Result<()> 
 
 // As Client
 
-async fn build_report(timeline : Arc<Timeline>, idx : usize, epoch : usize) {
-    if let Some(neighbours) = timeline.get_neighbours_at_epoch(idx, epoch) {
-
-        let mut responses : FuturesUnordered<_> = neighbours.iter().map(
-            |&id_dest| request_location_proof(idx, epoch, id_dest)
-        ).collect();
-
-        let mut count: usize = 0;
-        loop {
-            select! {
-                res = responses.select_next_some() => {
-                    match  res {
-                        Ok(v) => {count += 1}
-                        Err(e) => { }
-                    }
-                    if count >= 2 { //TODO change this number
-                        break;
-                    }
-                }
-                complete => break,
-            }
-        }
-
-    } else {  // Should never happen
-        panic!("Should nerver occour : Idx {:} from args doens't exist in grid.", idx)
-    }
-}
-
-pub async fn reports_generator(timeline : Arc<Timeline>, idx : usize) -> Result<()> { //TODO: f', create report
-    let start = Instant::now() + Duration::from_millis(50);
-    let mut interval = interval_at(start, Duration::from_millis(5000));
-
-    for epoch in 0..timeline.epochs() {
-        interval.tick().await;
-
-        println!("Client {:} entered epoch {:}/{:}.", idx, epoch, timeline.epochs()-1);
-
-        build_report(timeline.clone(), idx, epoch).await;
-
-    }
-    Ok(())
-}
-
 pub async fn request_location_proof(idx : usize, epoch : usize, id_dest : usize) -> Result<Proof> {
 
     let mut client = LocationProofClient::connect(get_url(id_dest)).await.wrap_err_with(
@@ -153,12 +111,43 @@ pub async fn request_location_proof(idx : usize, epoch : usize, id_dest : usize)
 
     match client.request_location_proof(request).await {
         Ok(response) => {
-            match &response.get_ref().proof {
-                Some(_) => { Ok(Proof::default()) } //TODO
-                None => { Err(eyre!("Something failed."))  }
+            match response.get_ref().proof.clone() {
+                Some(proof) => Ok(proof),
+                None => Err(eyre!("RequestLocationProof failed, no proof was recieved.")),
             }
         }
         Err(status) => Err(eyre!("RequestLocationProof failed with code {:?} and message {:?}.",
                             status.code(), status.message())),
     }
+}
+
+pub async fn get_proofs(timeline : Arc<Timeline>, idx : usize, epoch : usize) -> Vec<Proof> {
+
+    let nec_proofs : usize = 5; // TODO 2*f' + 1
+
+    let neighbours = match timeline.get_neighbours_at_epoch(idx, epoch) {
+        Some(neighbours) => neighbours,
+        None => panic!("Should nerver occour : Idx {:} from args doens't exist in grid.", idx),
+    };
+
+    let mut responses : FuturesUnordered<_> = neighbours.iter().map(
+        |&id_dest| request_location_proof(idx, epoch, id_dest)
+    ).collect();
+
+    let mut report : Vec<Proof> = Vec::with_capacity(nec_proofs); // Number of proofs needed
+    loop {
+        select! {
+            res = responses.select_next_some() => {
+                if let Ok(proof) = res {
+                    report.push(proof);
+                }
+
+                if report.len() >= nec_proofs {
+                    break ;
+                }
+            }
+            complete => break,
+        }
+    }
+    report
 }

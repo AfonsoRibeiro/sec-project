@@ -1,11 +1,16 @@
 Comunication between clients is not confidential. But should the proofs sent be encrypted?
+How can the communication between clients be not encrypted if a proof must be given?
 
-Does the server need to store the state??
+Does the server need to store the state?
 
-How can the communication between clients be encrypted if a proof must be given?
+what happens when client cant get 2*f' + 1 proofs?
+
+
+
 
 TODO:
- - tokio::interval_at for client
- - HA_client also as access to grid, and compares server responses to expected (useful for testing)
+ - (Maybe) HA_client also as access to grid, and compares server responses to expected (useful for testing)
 
- - Server
+ - Cryptography
+
+ - (K_ser K_req K_ass) Proof = {id_ass + {id_req + epoch, KPriv_ass}, KPub_ser}
