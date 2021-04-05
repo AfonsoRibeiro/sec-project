@@ -135,6 +135,16 @@ impl Timeline {
 
         Some(self.routes[&point][epoch])
     }
+
+    fn get_position(&self, index : usize) -> (usize, usize) {
+        (index % self.size, index / self.size)
+    }
+
+    pub fn get_location_at_epoch(&self, point : usize, epoch : usize) -> Option<(usize, usize)> {
+        if epoch >= self.epochs { return None; }
+
+        Some( self.get_position( self.routes[&point][epoch] ) )
+    }
 }
 
 // Needs to be safe!

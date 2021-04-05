@@ -16,7 +16,9 @@ message Report {
 message SubmitLocationReportRequest {
     Report report = 1;
     uint32 idx = 2;
-    uint32 epoch = 3;
+    uint32 loc_x = 3;
+    uint32 loc_y = 4;
+    uint32 epoch = 5;
 }
 
 message SubmitLocationReportResponse {}

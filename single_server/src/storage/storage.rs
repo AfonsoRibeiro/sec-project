@@ -7,18 +7,17 @@
 use std::{collections::{HashMap, HashSet}, fs::File, io::{BufReader, BufWriter}};
 
 use serde_derive::{Deserialize, Serialize};
-use eyre::{Context, eyre};
+use eyre::Context;
 use color_eyre::eyre::{self, Result};
-use std::convert::TryFrom;
 
 
 // pos_x -> pos_y -> user_id
 #[derive(Debug, Deserialize, Serialize)]
-pub struct Grid {
+struct Grid {
     grid : Vec<Vec<HashSet<usize>>>,
     size: usize
 }
-//epoch -> user id -> location 
+//epoch -> user id -> location
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Timeline {
     routes : HashMap<usize, HashMap<usize, (usize, usize)>>,
@@ -39,9 +38,9 @@ impl Grid {
         self.grid[pos_x][pos_y].insert(idx);
     }
 
-    fn get_neighbours(&self, pos_x : usize, pos_y : usize, idx : usize) -> Vec<usize>{ 
+    fn get_neighbours(&self, pos_x : usize, pos_y : usize, idx : usize) -> Vec<usize>{
         let mut neighbours : Vec<usize> = vec![];
-        
+
         let lower_x = if pos_x == 0 {pos_x} else {pos_x-1};
         let lower_y = if pos_y == 0 {pos_y} else {pos_y-1};
         let upper_x = if pos_x+1 == self.size {pos_x} else {pos_x+1};
@@ -60,7 +59,7 @@ impl Grid {
     fn get_users_at_location(&self, pos_x : usize, pos_y : usize) ->Vec<usize> {
         self.grid[pos_x][pos_y].iter().map(|&idx| idx).collect()
     }
-    
+
 }
 
 impl Timeline {
@@ -68,7 +67,7 @@ impl Timeline {
         Timeline {
             routes : HashMap::new(),
             timeline : vec![],
-            size 
+            size
         }
     }
 
@@ -79,12 +78,12 @@ impl Timeline {
         }else {
            let mut users_loc= HashMap::new();
            users_loc.insert(idx, (pos_x, pos_y));
-           self.routes.insert(epoch, users_loc); 
+           self.routes.insert(epoch, users_loc);
         }
-        
+
         for epoch_value in self.timeline.len()..=epoch {
             self.timeline.push(Grid::new_empty(self.size));
-        } 
+        }
         self.timeline[epoch].add_user_location(pos_x, pos_y, idx);
     }
 

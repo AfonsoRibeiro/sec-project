@@ -51,12 +51,17 @@ async fn main() -> Result<()> {
 }
 
 async fn reports_generator(timeline : Arc<Timeline>, idx : usize, epoch : usize, server_url : Uri) {
-    let proofs = proofing_system::get_proofs(timeline, idx, epoch).await;
+    if let Some((loc_x, loc_y)) = timeline.get_location_at_epoch(idx, epoch) {
+        let proofs = proofing_system::get_proofs(timeline, idx, epoch).await;
 
-    if proofs.len() > 0 {
-        let _r = reports::submit_location_report(idx, epoch, server_url, proofs).await;  // If failed should we try and resubmit
+        if proofs.len() > 0 {
+
+                let _r = reports::submit_location_report(idx, epoch, loc_x, loc_y, server_url, proofs).await;  // If failed should we try and resubmit
+            } else {
+                println!("Client {:} unable to generate report for epoch {:}.", idx, epoch);
+            }
     } else {
-        println!("Client {:} unable to generate report for epoch {:}.", idx, epoch);
+        print!("Error: reports_generator! (Should never happen)");
     }
 }
 

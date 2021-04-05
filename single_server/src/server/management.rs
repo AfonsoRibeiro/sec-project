@@ -1,6 +1,6 @@
 use color_eyre::eyre::Result;
 
-use std::convert::TryFrom;
+use std::{convert::TryFrom, sync::Arc};
 
 use tonic::{Request, Response, Status};
 
@@ -8,12 +8,17 @@ use protos::location_master::location_master_server::LocationMaster;
 use protos::location_master::{ObtainLocationReportRequest, ObtainLocationReportResponse,
     ObtainUsersAtLocationRequest, ObtainUsersAtLocationResponse};
 
-#[derive(Default)]
-pub struct MyLocationMaster {}
+use crate::storage::Timeline;
+
+pub struct MyLocationMaster {
+    storage : Arc<Timeline>,
+}
 
 impl MyLocationMaster {
-    fn new() -> MyLocationMaster {
-        MyLocationMaster {}
+    pub fn new(storage : Arc<Timeline>) -> MyLocationMaster {
+        MyLocationMaster {
+            storage,
+        }
     }
 
     fn parse_valid_idx(&self, idx : u32) -> Result<usize, Status> {

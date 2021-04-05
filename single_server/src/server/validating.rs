@@ -1,6 +1,9 @@
+
 use color_eyre::eyre::Result;
 
-use std::convert::TryFrom;
+use std::{convert::TryFrom, sync::Arc};
+
+use crate::storage::Timeline;
 
 use tonic::{Request, Response, Status};
 
@@ -8,12 +11,15 @@ use protos::location_storage::location_storage_server::{LocationStorage};
 use protos::location_storage::{SubmitLocationReportRequest, SubmitLocationReportResponse,
     ObtainLocationReportRequest, ObtainLocationReportResponse, Report};
 
-#[derive(Default)]
-pub struct MyLocationStorage {}
+pub struct MyLocationStorage {
+    storage : Arc<Timeline>,
+}
 
 impl MyLocationStorage {
-    fn new() -> MyLocationStorage {
-        MyLocationStorage {}
+    pub fn new(storage : Arc<Timeline>) -> MyLocationStorage {
+        MyLocationStorage {
+            storage,
+        }
     }
 
     fn parse_valid_idx(&self, idx : u32) -> Result<usize, Status> {
@@ -47,7 +53,9 @@ impl LocationStorage for MyLocationStorage {
                 (Err(err), _) | (_, Err(err)) => return Err(err),
         };
 
-        Ok(Response::new(SubmitLocationReportResponse {}))
+        
+
+        Ok(Response::new(SubmitLocationReportResponse::default() ))
     }
 
     async fn obtain_location_report(

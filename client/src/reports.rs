@@ -10,14 +10,23 @@ use grid::grid::Timeline;
 use protos::{location_proof::Proof, location_storage::{ObtainLocationReportRequest, Report, SubmitLocationReportRequest}};
 use protos::location_storage::location_storage_client::LocationStorageClient;
 
-pub async fn submit_location_report(idx : usize, epoch : usize, url : Uri, proofs_joined: Vec<Proof>) -> Result<()> {
+pub async fn submit_location_report(
+    idx : usize,
+    epoch : usize,
+    loc_x : usize,
+    loc_y : usize,
+    url : Uri,
+    proofs_joined: Vec<Proof>
+) -> Result<()> {
 
     let mut client = LocationStorageClient::connect(url).await?;
 
     let request = tonic::Request::new(SubmitLocationReportRequest {
-        idx: idx as u32,
-        epoch: epoch as u32,
-        report: Some(Report {
+        idx : idx as u32,
+        epoch : epoch as u32,
+        loc_x : loc_x as u32,
+        loc_y : loc_y as u32,
+        report : Some(Report {
             proofs: proofs_joined,
         }),
     });
