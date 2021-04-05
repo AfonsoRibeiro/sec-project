@@ -37,6 +37,15 @@ impl MyLocationStorage {
         }
         Ok(res_epoch.unwrap())
     }
+
+    fn parse_valid_location(&self, x : u32, y : u32) -> Result<(usize, usize), Status> {
+        let res_x = usize::try_from(x);
+        let res_y = usize::try_from(y);
+        if res_x.is_err() || res_y.is_err() /*|| self.timeline.xs() <= result_req_x.unwrap()*/ {
+            return Err(Status::invalid_argument(format!("Not a valid x or y: ({:}, {:}).", x, y)));
+        }
+        Ok((res_x.unwrap(), res_y.unwrap()))
+    }
 }
 
 #[tonic::async_trait]
@@ -48,12 +57,17 @@ impl LocationStorage for MyLocationStorage {
         let request = request.get_ref();
 
         let (req_idx, epoch) =
-            match (self.parse_valid_idx(request.idx), self.parse_valid_idx(request.epoch)) {
+            match (self.parse_valid_idx(request.idx), self.parse_valid_epoch(request.epoch)) {
                 (Ok(idx), Ok(epoch)) => (idx, epoch),
                 (Err(err), _) | (_, Err(err)) => return Err(err),
         };
 
-        
+        let (pos_x, pos_y) =  match self.parse_valid_location(request.pos_x, request.pos_y) {
+            Ok(position) => position,
+            Err(err) => return Err(err),
+        };
+
+        //self.storage.add_user_location_at_epoch(epoch, pos_x, pos_y, req_idx);
 
         Ok(Response::new(SubmitLocationReportResponse::default() ))
     }

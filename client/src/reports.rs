@@ -13,8 +13,8 @@ use protos::location_storage::location_storage_client::LocationStorageClient;
 pub async fn submit_location_report(
     idx : usize,
     epoch : usize,
-    loc_x : usize,
-    loc_y : usize,
+    pos_x : usize,
+    pos_y : usize,
     url : Uri,
     proofs_joined: Vec<Proof>
 ) -> Result<()> {
@@ -24,8 +24,8 @@ pub async fn submit_location_report(
     let request = tonic::Request::new(SubmitLocationReportRequest {
         idx : idx as u32,
         epoch : epoch as u32,
-        loc_x : loc_x as u32,
-        loc_y : loc_y as u32,
+        pos_x : pos_x as u32,
+        pos_y : pos_y as u32,
         report : Some(Report {
             proofs: proofs_joined,
         }),

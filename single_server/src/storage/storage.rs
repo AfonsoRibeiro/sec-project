@@ -17,13 +17,6 @@ struct Grid {
     grid : Vec<Vec<HashSet<usize>>>,
     size: usize
 }
-//epoch -> user id -> location
-#[derive(Debug, Deserialize, Serialize)]
-pub struct Timeline {
-    routes : HashMap<usize, HashMap<usize, (usize, usize)>>,
-    timeline : Vec<Grid>,
-    size: usize,
-}
 
 impl Grid {
 
@@ -60,6 +53,14 @@ impl Grid {
         self.grid[pos_x][pos_y].iter().map(|&idx| idx).collect()
     }
 
+}
+
+//epoch -> user id -> location
+#[derive(Debug, Deserialize, Serialize)]
+pub struct Timeline {
+    routes : HashMap<usize, HashMap<usize, (usize, usize)>>,
+    timeline : Vec<Grid>,
+    size: usize,
 }
 
 impl Timeline {
