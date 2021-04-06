@@ -67,9 +67,10 @@ impl LocationStorage for MyLocationStorage {
             Err(err) => return Err(err),
         };
 
-        //self.storage.add_user_location_at_epoch(epoch, pos_x, pos_y, req_idx);
-
-        Ok(Response::new(SubmitLocationReportResponse::default() ))
+        match self.storage.add_user_location_at_epoch(epoch, pos_x, pos_y, req_idx) {
+            Ok(_) => Ok(Response::new(SubmitLocationReportResponse::default() )),
+            Err(_) => Err(Status::permission_denied("Permission denied!!")),
+        }     
     }
 
     async fn obtain_location_report(
@@ -83,12 +84,9 @@ impl LocationStorage for MyLocationStorage {
                 (Ok(idx), Ok(epoch)) => (idx, epoch),
                 (Err(err), _) | (_, Err(err)) => return Err(err),
         };
-
-        let reply = ObtainLocationReportResponse {
-            pos_x : 4,
-            pos_y : 5,
-        };
-
-        Ok(Response::new(reply))
+        match self.storage.get_user_location_at_epoch(epoch, req_idx) {
+            Some((x,y )) => Ok(Response::new(ObtainLocationReportResponse { pos_x : x as u32, pos_y : y as u32,})),
+            None => Err(Status::not_found(format!("User with id {:} not found at epoch {:}", req_idx, epoch))),
+        } 
     }
 }

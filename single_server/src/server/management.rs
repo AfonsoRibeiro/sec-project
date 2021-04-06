@@ -63,10 +63,10 @@ impl LocationMaster for MyLocationMaster {
                 (Err(err), _) | (_, Err(err)) => return Err(err),
         };
 
-        Ok(Response::new(ObtainLocationReportResponse {
-            pos_x : 5,
-            pos_y : 6,
-        }))
+        match self.storage.get_user_location_at_epoch(epoch, req_idx) {
+            Some((x,y )) => Ok(Response::new(ObtainLocationReportResponse { pos_x : x as u32, pos_y : y as u32,})),
+            None => Err(Status::not_found(format!("User with id {:} not found at epoch {:}", req_idx, epoch))),
+        } 
     }
 
     async fn obtain_users_at_location(
@@ -81,10 +81,9 @@ impl LocationMaster for MyLocationMaster {
                 (Err(err), _) | (_, Err(err)) => return Err(err),
         };
 
-        let reply = ObtainUsersAtLocationResponse {
-            idxs : vec![],
-        };
-
-        Ok(Response::new(reply))
+        match self.storage.get_users_at_epoch_at_location(epoch, x, y) {
+            Some(users) => Ok(Response::new(ObtainUsersAtLocationResponse{ idxs : users.iter().map(|&idx| idx as u32).collect() })),
+            None => Err(Status::not_found(format!("No users found at location ({:}, {:}) at epoch {:}", x, y, epoch))),
+        } 
     }
 }
