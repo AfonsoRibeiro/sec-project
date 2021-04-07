@@ -1,5 +1,6 @@
 
 use color_eyre::eyre::Result;
+use tokio::count;
 
 use std::{convert::TryFrom, sync::Arc};
 
@@ -7,7 +8,7 @@ use crate::storage::Timeline;
 
 use tonic::{Request, Response, Status};
 
-use protos::location_storage::location_storage_server::{LocationStorage};
+use protos::{location_proof::Proof, location_storage::location_storage_server::{LocationStorage}};
 use protos::location_storage::{SubmitLocationReportRequest, SubmitLocationReportResponse,
     ObtainLocationReportRequest, ObtainLocationReportResponse, Report};
 
@@ -45,6 +46,22 @@ impl MyLocationStorage {
             return Err(Status::invalid_argument(format!("Not a valid x or y: ({:}, {:}).", x, y)));
         }
         Ok((res_x.unwrap(), res_y.unwrap()))
+    }
+
+    fn check_valid_location_report(&self, pos_x: usize, pos_y: usize, proofs: Vec<Proof>) -> bool {
+        let f_line : usize = 10;
+        let ((lower_x, lower_y), (upper_x, upper_y)) = self.storage.valid_neighbour(pos_x, pos_y);
+        let mut counter = 0;
+        for proof in proofs {
+            let (x, y)  = (proof.loc_x_ass as usize, proof.loc_y_ass as usize); //TODO: fix conversion
+            if lower_x <= x && x <= upper_x && lower_y <= y && y <= upper_y {
+                counter += 1;
+            }
+            if counter > f_line {
+                break;
+            }
+        }
+        counter > f_line
     }
 }
 
