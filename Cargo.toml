@@ -6,6 +6,7 @@ members = [
     "ha_client",
     "single_server",
     "multiple_servers",
+    "security",
 ]
 
 [profile.dev.package.backtrace]

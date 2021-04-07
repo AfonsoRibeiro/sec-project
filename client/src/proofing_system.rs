@@ -65,11 +65,14 @@ impl LocationProof for Proofer {
         match self.timeline.get_neighbours_at_epoch(self.idx, epoch) {
             Some(neighbours) => {
                 if neighbours.iter().any(|&i| i == req_idx) {
+                    let (x, y) = self.timeline.get_location_at_epoch(self.idx, epoch).unwrap();
                     Ok(Response::new(RequestLocationProofResponse {
                         proof : Some (Proof {
                             idx_req : req_idx as u32,
                             epoch: epoch as u32,
                             idx_ass: self.idx as u32,
+                            loc_x_ass: x as u32,
+                            loc_y_ass: y as u32,
                         })
 
                     }))
