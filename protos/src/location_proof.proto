@@ -8,11 +8,11 @@ service LocationProof {
 }
 
 message Proof {
-    uint32 idx_req = 1;
-    uint32 epoch = 2;
-    uint32 idx_ass = 3;
-    uint32 loc_x_ass = 4;
-    uint32 loc_y_ass = 5;
+    uint64 idx_req = 1;
+    uint64 epoch = 2;
+    uint64 idx_ass = 3;
+    uint64 loc_x_ass = 4;
+    uint64 loc_y_ass = 5;
 }
 
 /*message Proof {
@@ -20,8 +20,8 @@ message Proof {
 }*/
 
 message RequestLocationProofRequest {
-    uint32 idx = 1;
-    uint32 epoch = 2;
+    uint64 idx = 1;
+    uint64 epoch = 2;
 }
 
 message RequestLocationProofResponse {

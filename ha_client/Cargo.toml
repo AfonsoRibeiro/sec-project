@@ -13,3 +13,4 @@ structopt = "0.3"
 tokio = { version = "1.4", features = ["full"] }
 tonic = "0.4"
 protos = { path = "../protos" }
+regex = "1.4"

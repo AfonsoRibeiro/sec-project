@@ -68,11 +68,11 @@ impl LocationProof for Proofer {
                     let (x, y) = self.timeline.get_location_at_epoch(self.idx, epoch).unwrap();
                     Ok(Response::new(RequestLocationProofResponse {
                         proof : Some (Proof {
-                            idx_req : req_idx as u32,
-                            epoch: epoch as u32,
-                            idx_ass: self.idx as u32,
-                            loc_x_ass: x as u32,
-                            loc_y_ass: y as u32,
+                            idx_req : req_idx as u64,
+                            epoch: epoch as u64,
+                            idx_ass: self.idx as u64,
+                            loc_x_ass: x as u64,
+                            loc_y_ass: y as u64,
                         })
 
                     }))
@@ -108,8 +108,8 @@ pub async fn request_location_proof(idx : usize, epoch : usize, id_dest : usize)
     )?;
 
     let request = tonic::Request::new(RequestLocationProofRequest {
-        idx: idx as u32,
-        epoch: epoch as u32,
+        idx: idx as u64,
+        epoch: epoch as u64,
     });
 
     match client.request_location_proof(request).await {

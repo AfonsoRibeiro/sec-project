@@ -22,10 +22,10 @@ pub async fn submit_location_report(
     let mut client = LocationStorageClient::connect(url).await?;
 
     let request = tonic::Request::new(SubmitLocationReportRequest {
-        idx : idx as u32,
-        epoch : epoch as u32,
-        pos_x : pos_x as u32,
-        pos_y : pos_y as u32,
+        idx : idx as u64,
+        epoch : epoch as u64,
+        pos_x : pos_x as u64,
+        pos_y : pos_y as u64,
         report : Some(Report {
             proofs: proofs_joined,
         }),
@@ -44,8 +44,8 @@ pub async fn obtain_location_report(timeline : Arc<Timeline>, idx : usize, epoch
     let mut client = LocationStorageClient::connect(url).await?;
 
     let request = tonic::Request::new(ObtainLocationReportRequest {
-        idx: idx as u32,
-        epoch: epoch as u32,
+        idx: idx as u64,
+        epoch: epoch as u64,
     });
 
     let response = match client.obtain_location_report(request).await {

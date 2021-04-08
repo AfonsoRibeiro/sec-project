@@ -375,6 +375,7 @@ dependencies = [
  "color-eyre",
  "eyre",
  "protos",
+ "regex",
  "structopt",
  "tokio",
  "tonic",

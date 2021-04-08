@@ -8,21 +8,21 @@ service LocationMaster {
 }
 
 message ObtainLocationReportRequest {
-    uint32 idx = 1;
-    uint32 epoch = 2;
+    uint64 idx = 1;
+    uint64 epoch = 2;
 }
 
 message ObtainLocationReportResponse {
-    uint32 pos_x = 1;
-    uint32 pos_y = 2;
+    uint64 pos_x = 1;
+    uint64 pos_y = 2;
 }
 
 message ObtainUsersAtLocationRequest {
-    uint32 pos_x = 1;
-    uint32 pos_y = 2;
-    uint32 epoch = 3;
+    uint64 pos_x = 1;
+    uint64 pos_y = 2;
+    uint64 epoch = 3;
 }
 
 message ObtainUsersAtLocationResponse {
-    repeated uint32 idxs = 1;
+    repeated uint64 idxs = 1;
 }

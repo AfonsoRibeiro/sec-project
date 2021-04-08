@@ -21,7 +21,7 @@ impl MyLocationMaster {
         }
     }
 
-    fn parse_valid_idx(&self, idx : u32) -> Result<usize, Status> {
+    fn parse_valid_idx(&self, idx : u64) -> Result<usize, Status> {
         let res_idx = usize::try_from(idx);
         if res_idx.is_err() /*|| !self.timeline.is_point(idx.unwrap())*/ {
             return Err(Status::invalid_argument(format!("Not a valid id: {:}.", idx)));
@@ -29,7 +29,7 @@ impl MyLocationMaster {
         Ok(res_idx.unwrap())
     }
 
-    fn parse_valid_epoch(&self, epoch : u32) -> Result<usize, Status> {
+    fn parse_valid_epoch(&self, epoch : u64) -> Result<usize, Status> {
         let res_epoch = usize::try_from(epoch);
         if res_epoch.is_err() /*|| self.timeline.epochs() <= result_req_epoch.unwrap()*/ {
             return Err(Status::invalid_argument(format!("Not a valid epoch: {:}.", epoch)));
@@ -37,7 +37,7 @@ impl MyLocationMaster {
         Ok(res_epoch.unwrap())
     }
 
-    fn parse_valid_pos(&self, x : u32, y : u32) -> Result<(usize, usize), Status> {
+    fn parse_valid_pos(&self, x : u64, y : u64) -> Result<(usize, usize), Status> {
         let (res_x, res_y) = (usize::try_from(x), usize::try_from(y));
         if res_x.is_err() /* || check limits */ {
             return Err(Status::invalid_argument(format!("Not a valid x position: {:}.", x)));
@@ -64,7 +64,7 @@ impl LocationMaster for MyLocationMaster {
         };
 
         match self.storage.get_user_location_at_epoch(epoch, req_idx) {
-            Some((x,y )) => Ok(Response::new(ObtainLocationReportResponse { pos_x : x as u32, pos_y : y as u32,})),
+            Some((x,y )) => Ok(Response::new(ObtainLocationReportResponse { pos_x : x as u64, pos_y : y as u64,})),
             None => Err(Status::not_found(format!("User with id {:} not found at epoch {:}", req_idx, epoch))),
         } 
     }
@@ -82,7 +82,7 @@ impl LocationMaster for MyLocationMaster {
         };
 
         match self.storage.get_users_at_epoch_at_location(epoch, x, y) {
-            Some(users) => Ok(Response::new(ObtainUsersAtLocationResponse{ idxs : users.iter().map(|&idx| idx as u32).collect() })),
+            Some(users) => Ok(Response::new(ObtainUsersAtLocationResponse{ idxs : users.iter().map(|&idx| idx as u64).collect() })),
             None => Err(Status::not_found(format!("No users found at location ({:}, {:}) at epoch {:}", x, y, epoch))),
         } 
     }
