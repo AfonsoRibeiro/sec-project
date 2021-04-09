@@ -1,39 +1,35 @@
 use serde_derive::{Deserialize, Serialize};
-use sodiumoxide::crypto::aead::{self, Key, Nonce};
-use color_eyre::eyre::{Context, Result};
+use sodiumoxide::crypto::sign::{self, PublicKey, SecretKey};
+use color_eyre::eyre::Result;
 
 #[derive(Debug,Serialize,Deserialize)]
 pub struct Proof {
     idx_req : usize,
     epoch : usize,
-    idx_ass : usize,
     loc_ass : (usize,usize),
 }
 
 impl Proof {
-    
-    fn new(epoch : usize, idx_req : usize, idx_ass : usize, loc_ass : (usize, usize)) -> Proof {
+    pub fn new(epoch : usize, idx_req : usize, loc_ass : (usize, usize)) -> Proof {
         Proof {
             idx_req,
             epoch,
-            idx_ass,
             loc_ass,
         }
     }
 }
 
+pub fn sign_proof(oursk : &SecretKey, proof : Proof) -> Vec<u8>{
 
-pub fn encode_proof(epoch : usize, idx_req : usize, idx_ass : usize, loc_ass : (usize, usize), key_ : &Key) -> Vec<u8>{
-    let proof = Proof::new(epoch, idx_req, idx_ass, loc_ass);
-    let message = serde_json::to_string(&proof).unwrap();
-    let n = aead::gen_nonce();
+    let plaintext = serde_json::to_vec(&proof).unwrap();
 
-    aead::seal(message.as_bytes(), None, &n, key_)
+    sign::sign(&plaintext, oursk)
 }
 
-pub fn decode_proof(encoded_proof : Vec<u8>, key_: &Key, n : &Nonce) -> Result<Proof> {
-    let decoded_proof = aead::open(&encoded_proof, None, n, key_).unwrap(); //TODO: fix this 
-    let proof = serde_json::to_string(&decoded_proof)?;
-    let proof : Proof = serde_json::from_str(&proof)?;
+pub fn verify_proof(theirpk : &PublicKey, ciphertest : &Vec<u8>) -> Result<Proof> {
+
+    let decoded_proof = sign::verify(ciphertest, theirpk).unwrap(); //TODO: fix this
+    let proof = serde_json::from_slice(&decoded_proof)?;
+
     Ok(proof)
 }

@@ -5,8 +5,7 @@ use tonic::transport::Uri;
 
 
 use protos::location_master::location_master_client::LocationMasterClient;
-use protos::location_master::{ObtainLocationReportRequest, ObtainLocationReportResponse,
-    ObtainUsersAtLocationRequest, ObtainUsersAtLocationResponse};
+use protos::location_master::{ObtainLocationReportRequest, ObtainUsersAtLocationRequest};
 
 
 pub async fn obtain_location_report(idx : u64, epoch : u64, grid_size : u64, url : Uri) -> Result<(u64, u64)> {

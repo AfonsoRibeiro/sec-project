@@ -73,7 +73,7 @@ impl LocationProof for Proofer {
                             idx_ass: self.idx as u64,
                             loc_x_ass: x as u64,
                             loc_y_ass: y as u64,
-                        })
+                        }),
 
                     }))
                 } else {
