@@ -23,7 +23,7 @@ gnome-terminal -- ./target/$dir/single_server --server $server_addr --size $grid
 
 echo "Starting Clients"
 echo
-for ((idx=0;i<n_points;i++))
+for ((idx=0;idx<n_points;idx++))
 do
     gnome-terminal -- ./target/$dir/client --server $server_url --id $idx --grid $grid_file < sbin/noop.txt
 done

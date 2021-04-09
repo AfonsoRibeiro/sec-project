@@ -72,7 +72,7 @@ impl LocationStorage for MyLocationStorage {
         request: Request<SubmitLocationReportRequest>,
     ) -> Result<Response<SubmitLocationReportResponse>, Status> {
         let request = request.get_ref();
-
+        println!("Client {:} sending a location report", request.idx);
         let (req_idx, epoch) =
             match (self.parse_valid_idx(request.idx), self.parse_valid_epoch(request.epoch)) {
                 (Ok(idx), Ok(epoch)) => (idx, epoch),

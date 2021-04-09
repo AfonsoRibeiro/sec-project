@@ -68,8 +68,8 @@ async fn reports_generator(timeline : Arc<Timeline>, idx : usize, epoch : usize,
 }
 
 async fn epochs_generator(timeline : Arc<Timeline>, idx : usize, server_url : Uri) -> Result<()> { //TODO: f', create report
-    let start = Instant::now() + Duration::from_millis(50);
-    let mut interval = interval_at(start, Duration::from_millis(20000));
+    let start = Instant::now() + Duration::from_millis(1000);
+    let mut interval = interval_at(start, Duration::from_millis(10000));
 
     for epoch in 0..timeline.epochs() {
         interval.tick().await;

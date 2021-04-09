@@ -111,8 +111,8 @@ pub async fn request_location_proof(idx : usize, epoch : usize, id_dest : usize)
         idx: idx as u64,
         epoch: epoch as u64,
     });
-
     match client.request_location_proof(request).await {
+        
         Ok(response) => {
             match response.get_ref().proof.clone() {
                 Some(proof) => Ok(proof),
