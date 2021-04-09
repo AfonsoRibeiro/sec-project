@@ -11,8 +11,8 @@ message Proof {
     uint64 idx_req = 1;
     uint64 epoch = 2;
     uint64 idx_ass = 3;
-    uint64 loc_x_ass = 4;
-    uint64 loc_y_ass = 5;
+    uint64 loc_x_req = 4;
+    uint64 loc_y_req = 5;
 }
 
 /*message Proof { //proof is encrypted with idx
@@ -26,4 +26,5 @@ message RequestLocationProofRequest {
 
 message RequestLocationProofResponse {
     Proof proof = 1;
+    uint64 idx_ass = 2;
 }

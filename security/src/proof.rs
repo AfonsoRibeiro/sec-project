@@ -5,16 +5,18 @@ use color_eyre::eyre::Result;
 #[derive(Debug,Serialize,Deserialize)]
 pub struct Proof {
     idx_req : usize,
+    idx_ass : usize,
     epoch : usize,
-    loc_ass : (usize,usize),
+    loc_req : (usize,usize),
 }
 
 impl Proof {
-    pub fn new(epoch : usize, idx_req : usize, loc_ass : (usize, usize)) -> Proof {
+    pub fn new(epoch : usize, idx_req : usize, idx_ass : usize, loc_req : (usize, usize)) -> Proof {
         Proof {
             idx_req,
+            idx_ass,
             epoch,
-            loc_ass,
+            loc_req,
         }
     }
 }

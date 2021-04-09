@@ -71,9 +71,10 @@ impl LocationProof for Proofer {
                             idx_req : req_idx as u64,
                             epoch: epoch as u64,
                             idx_ass: self.idx as u64,
-                            loc_x_ass: x as u64,
-                            loc_y_ass: y as u64,
+                            loc_x_req: x as u64,
+                            loc_y_req: y as u64,
                         }),
+                        idx_ass : self.idx as u64,
 
                     }))
                 } else {
@@ -101,7 +102,7 @@ pub async fn start_proofer(idx : usize, timeline : Arc<Timeline>) -> Result<()> 
 
 // As Client
 
-pub async fn request_location_proof(idx : usize, epoch : usize, id_dest : usize) -> Result<Proof> {
+pub async fn request_location_proof(idx : usize, epoch : usize, id_dest : usize) -> Result<(Proof, u64)> {
 
     let mut client = LocationProofClient::connect(get_url(id_dest)).await.wrap_err_with(
         || format!("Failed to connect to client with id: {:}.", id_dest)
@@ -115,7 +116,7 @@ pub async fn request_location_proof(idx : usize, epoch : usize, id_dest : usize)
         
         Ok(response) => {
             match response.get_ref().proof.clone() {
-                Some(proof) => Ok(proof),
+                Some(proof) => Ok((proof, response.get_ref().idx_ass)),
                 None => Err(eyre!("RequestLocationProof failed, no proof was recieved.")),
             }
         }
@@ -124,7 +125,7 @@ pub async fn request_location_proof(idx : usize, epoch : usize, id_dest : usize)
     }
 }
 
-pub async fn get_proofs(timeline : Arc<Timeline>, idx : usize, epoch : usize) -> Vec<Proof> {
+pub async fn get_proofs(timeline : Arc<Timeline>, idx : usize, epoch : usize) -> (Vec<Proof>, Vec<u64>) {
 
     let nec_proofs : usize = 1; // TODO 2*f' + 1
 
@@ -138,12 +139,15 @@ pub async fn get_proofs(timeline : Arc<Timeline>, idx : usize, epoch : usize) ->
         |&id_dest| request_location_proof(idx, epoch, id_dest)
     ).collect();
 
-    let mut report : Vec<Proof> = Vec::with_capacity(nec_proofs); // Number of proofs needed
+    let mut report : Vec<Proof> = Vec::with_capacity(nec_proofs);
+    let mut idx : Vec<u64> = Vec::with_capacity(nec_proofs);  // Number of proofs needed
+    
     loop {
         select! {
             res = responses.select_next_some() => {
-                if let Ok(proof) = res {
+                if let Ok((proof, idx_ass)) = res {
                     report.push(proof);
+                    idx.push(idx_ass);
                 }
 
                 if report.len() >= nec_proofs {
@@ -153,5 +157,5 @@ pub async fn get_proofs(timeline : Arc<Timeline>, idx : usize, epoch : usize) ->
             complete => break,
         }
     }
-    report
+    (report, idx)
 }

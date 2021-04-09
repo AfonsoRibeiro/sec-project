@@ -16,7 +16,8 @@ pub async fn submit_location_report(
     pos_x : usize,
     pos_y : usize,
     url : Uri,
-    proofs_joined: Vec<Proof>
+    proofs_joined: Vec<Proof>, 
+    idx_ass : Vec<u64>,
 ) -> Result<()> {
 
     let mut client = LocationStorageClient::connect(url).await?;
@@ -28,6 +29,7 @@ pub async fn submit_location_report(
         pos_y : pos_y as u64,
         report : Some(Report {
             proofs: proofs_joined,
+            idx_ass : idx_ass,
         }),
     });
 

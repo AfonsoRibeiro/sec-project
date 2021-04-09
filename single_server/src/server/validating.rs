@@ -53,7 +53,7 @@ impl MyLocationStorage {
         let ((lower_x, lower_y), (upper_x, upper_y)) = self.storage.valid_neighbour(pos_x, pos_y);
         let mut counter = 0;
         for proof in proofs {
-            let (x, y)  = (proof.loc_x_ass as usize, proof.loc_y_ass as usize); //TODO: fix conversion
+            let (x, y)  = (proof.loc_x_req as usize, proof.loc_y_req as usize); //TODO: fix conversion
             if lower_x <= x && x <= upper_x && lower_y <= y && y <= upper_y {
                 counter += 1;
             }

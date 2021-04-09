@@ -11,6 +11,7 @@ service LocationStorage {
 
 message Report {
     repeated location_proof.Proof proofs = 1;
+    repeated uint64 idx_ass = 2;
 }
 
 message SubmitLocationReportRequest {
@@ -20,6 +21,10 @@ message SubmitLocationReportRequest {
     uint64 pos_y = 4;
     uint64 epoch = 5;
 }
+
+/*message SubmitLocationReportRequest { //report is encrypted with idx
+    repeated uint8 report = 1;
+}*/
 
 message SubmitLocationReportResponse {}
 
