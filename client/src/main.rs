@@ -41,11 +41,13 @@ async fn main() -> Result<()> {
         return Err(eyre!("Error : Invalid id for client {:}.", opt.idx));
     }
 
-    tokio::spawn(proofing_system::start_proofer(opt.idx, timeline.clone()));
+    let proofer = tokio::spawn(proofing_system::start_proofer(opt.idx, timeline.clone()));
 
     tokio::spawn(epochs_generator(timeline.clone(), opt.idx, opt.server_url.clone()));
 
     read_commands(timeline.clone(), opt.idx, opt.server_url).await;
+
+    let _x = proofer.await; // Not important resolt just dont end
 
     Ok(())
 }
@@ -67,7 +69,7 @@ async fn reports_generator(timeline : Arc<Timeline>, idx : usize, epoch : usize,
 
 async fn epochs_generator(timeline : Arc<Timeline>, idx : usize, server_url : Uri) -> Result<()> { //TODO: f', create report
     let start = Instant::now() + Duration::from_millis(50);
-    let mut interval = interval_at(start, Duration::from_millis(5000));
+    let mut interval = interval_at(start, Duration::from_millis(20000));
 
     for epoch in 0..timeline.epochs() {
         interval.tick().await;
@@ -90,13 +92,18 @@ async fn read_commands(timeline : Arc<Timeline>, idx : usize, server : Uri) {
 
     loop {
         buffer.clear();
-        reader.read_line(&mut buffer).await.unwrap(); // Trusting io (don know if it works with > )
+        if reader.read_line(&mut buffer).await.unwrap() == 0 {
+            break;
+        }
         {
             if let Some(cap) = orep_pat.captures(buffer.trim_end()) {
                 let epoch  = cap[2].parse::<usize>();
                 if epoch.is_err() { print_command_msg(); continue; }
-                let _x = reports::obtain_location_report(timeline.clone(), idx, epoch.unwrap(), server.clone()).await;
-                // TODO deal with return
+                match reports::obtain_location_report(timeline.clone(), idx, epoch.unwrap(), server.clone()).await {
+                    Ok((x, y)) => println!("location {:} {:}", x, y),
+                    Err(err) => println!("{:}", err.to_string()),
+                }
+
             } else {
                 print_command_msg();
             }

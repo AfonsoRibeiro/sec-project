@@ -50,16 +50,21 @@ async fn read_commands(grid_size : u64, server : Uri) {
                 let id  = cap[2].parse::<u64>();
                 let epoch  = cap[3].parse::<u64>();
                 if id.is_err() || epoch.is_err() { print_command_msg(); continue; }
-                let _x = verifying::obtain_location_report(id.unwrap(), epoch.unwrap(), grid_size, server.clone()).await;
-                // TODO deal with return
+
+                match verifying::obtain_location_report(id.unwrap(), epoch.unwrap(), grid_size, server.clone()).await {
+                    Ok((x, y)) => println!("location {:} {:}", x, y),
+                    Err(err) => println!("{:}", err.to_string()),
+                }
 
             } else if let Some(cap) = o_users_pat.captures(buffer.trim_end()) {
                 let epoch  = cap[2].parse::<u64>();
                 let pos_x  = cap[2].parse::<u64>();
                 let pos_y  = cap[2].parse::<u64>();
                 if epoch.is_err() || pos_x.is_err() || pos_y.is_err() { print_command_msg(); continue; }
-                let _x = verifying::obtain_users_at_location(epoch.unwrap(), pos_x.unwrap(), pos_y.unwrap(), server.clone()).await;
-                // TODO deal with return
+                match verifying::obtain_users_at_location(epoch.unwrap(), pos_x.unwrap(), pos_y.unwrap(), server.clone()).await {
+                    Ok(clients) => println!("clients {:?}", clients),
+                    Err(err) => println!("{:}", err.to_string()),
+                }
             } else {
                 print_command_msg();
             }
@@ -67,5 +72,4 @@ async fn read_commands(grid_size : u64, server : Uri) {
     }
 }
 
-fn print_command_msg() { println!("To obtain a report use: report <id> <epoch>\n
-                                   To obtain users ate location use: users <epoch> <pos_x> <pos_y>"); }
+fn print_command_msg() { println!("To obtain a report use: report <id> <epoch>\nTo obtain users ate location use: users <epoch> <pos_x> <pos_y>"); }

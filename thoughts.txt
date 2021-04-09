@@ -1,7 +1,4 @@
-Does the server need to store the state?
-
 what happens when client cant get 2*f' + 1 proofs?
-
 
 users have no encryption, shoud the requester just put the id alongside the proof in report or does it need to be the proofer sending its id so the requester knows it
 
@@ -15,3 +12,7 @@ TODO:
  - (K_ser K_req K_ass) Proof = {id_ass + {id_req + epoch, KPriv_ass}, KPub_ser}
 
  - DashMap & DashSet, readwritelock
+
+ - Fix interval_at, starting all from same time
+
+ - Does the server need to store the state
