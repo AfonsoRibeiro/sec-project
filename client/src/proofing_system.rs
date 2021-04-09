@@ -132,6 +132,7 @@ pub async fn get_proofs(timeline : Arc<Timeline>, idx : usize, epoch : usize) ->
         Some(neighbours) => neighbours,
         None => panic!("Should nerver occour : Idx {:} from args doens't exist in grid.", idx),
     };
+    println!("Neighbours {:?}", neighbours);
 
     let mut responses : FuturesUnordered<_> = neighbours.iter().map(
         |&id_dest| request_location_proof(idx, epoch, id_dest)

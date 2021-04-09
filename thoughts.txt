@@ -11,8 +11,6 @@ TODO:
 
  - (K_ser K_req K_ass) Proof = {id_ass + {id_req + epoch, KPriv_ass}, KPub_ser}
 
- - DashMap & DashSet, readwritelock
-
  - Fix interval_at, starting all from same time
 
  - Does the server need to store the state

@@ -38,7 +38,7 @@ impl Grid {
         let lower_x = if pos_x == 0 {pos_x} else {pos_x-1};
         let lower_y = if pos_y == 0 {pos_y} else {pos_y-1};
         let upper_x = if pos_x+1 == self.size {pos_x} else {pos_x+1};
-        let upper_y = if pos_y+1 == self.size {pos_x} else {pos_y+1};
+        let upper_y = if pos_y+1 == self.size {pos_y} else {pos_y+1};
 
         for x in lower_x..=upper_x {
             for y in lower_y..=upper_y {

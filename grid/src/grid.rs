@@ -40,10 +40,11 @@ impl Grid {
         let lower_x = if x == 0 {x} else {x-1};
         let lower_y = if y == 0 {y} else {y-1};
         let upper_x = if x+1 == self.size {x} else {x+1};
-        let upper_y = if y+1 == self.size {x} else {y+1};
+        let upper_y = if y+1 == self.size {y} else {y+1};
 
         for x in lower_x..=upper_x {
             for y in lower_y..=upper_y {
+                println!("(x,y): ({:},{:})", x, y);
                 neighbours.extend( self.grid[self.get_index(x, y)].iter() );
             }
         }

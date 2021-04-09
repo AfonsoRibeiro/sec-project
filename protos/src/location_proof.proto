@@ -15,7 +15,7 @@ message Proof {
     uint64 loc_y_ass = 5;
 }
 
-/*message Proof {
+/*message Proof { //proof is encrypted with idx
     repeated uint8 proof = 1;
 }*/
 
