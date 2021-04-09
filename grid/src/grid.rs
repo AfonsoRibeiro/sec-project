@@ -44,7 +44,6 @@ impl Grid {
 
         for x in lower_x..=upper_x {
             for y in lower_y..=upper_y {
-                println!("(x,y): ({:},{:})", x, y);
                 neighbours.extend( self.grid[self.get_index(x, y)].iter() );
             }
         }

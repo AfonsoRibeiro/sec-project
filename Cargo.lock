@@ -931,6 +931,7 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "sodiumoxide",
+ "structopt",
 ]
 
 [[package]]

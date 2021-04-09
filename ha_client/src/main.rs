@@ -58,8 +58,8 @@ async fn read_commands(grid_size : u64, server : Uri) {
 
             } else if let Some(cap) = o_users_pat.captures(buffer.trim_end()) {
                 let epoch  = cap[2].parse::<u64>();
-                let pos_x  = cap[2].parse::<u64>();
-                let pos_y  = cap[2].parse::<u64>();
+                let pos_x  = cap[3].parse::<u64>();
+                let pos_y  = cap[4].parse::<u64>();
                 if epoch.is_err() || pos_x.is_err() || pos_y.is_err() { print_command_msg(); continue; }
                 match verifying::obtain_users_at_location(epoch.unwrap(), pos_x.unwrap(), pos_y.unwrap(), server.clone()).await {
                     Ok(clients) => println!("clients {:?}", clients),
