@@ -26,9 +26,8 @@ impl Report {
 pub fn encode_report(signsk : &sign::SecretKey, oursk : &box_::SecretKey, theirpk : &box_::PublicKey, report : Report) -> Vec<u8>{
 
     let plaintext = serde_json::to_vec(&report).unwrap();
-
     let signtext = sign::sign(&plaintext, signsk);
-    
+
     let box_nonce = box_::gen_nonce();
 
     box_::seal(&signtext,&box_nonce, theirpk, oursk)
@@ -38,9 +37,9 @@ pub fn decode_report(signpk : &sign::PublicKey, oursk : &box_::SecretKey, theirp
 
     let nonce = box_::gen_nonce(); // TODO: Might need to be the same
     let decoded_report = box_::open(ciphertext, &nonce, theirpk, oursk).unwrap(); //TODO: fix this
-    
+
     let report = sign::verify(&decoded_report,signpk).unwrap(); //TODO: fix this
-    
+
     let report = serde_json::from_slice(&report)?;
 
     Ok(report)

@@ -14,5 +14,7 @@ tokio = { version = "1.4", features = ["full"] }
 tonic = "0.4"
 protos = { path = "../protos" }
 grid = { path = "../grid" }
+security = { path = "../security" }
 futures = "0.3"
 regex = "1.4"
+sodiumoxide = "0.2.6"

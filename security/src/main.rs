@@ -1,3 +1,5 @@
+mod key_management;
+
 use structopt::StructOpt;
 use color_eyre::eyre::Result;
 
@@ -7,6 +9,9 @@ struct Opt {
 
     #[structopt(long, default_value = "20")]
     n_clients : usize,
+
+    #[structopt(name = "keys", long, default_value = "security/keys")]
+    keys_dir : String,
 }
 
 fn main() -> Result<()> {
@@ -14,7 +19,5 @@ fn main() -> Result<()> {
 
     let opt = Opt::from_args();
 
-
-
-    Ok(())
+    key_management::save_keys(opt.n_clients, opt.keys_dir)
 }

@@ -14,6 +14,12 @@ use tokio::io::{self, AsyncBufReadExt, BufReader};
 use tonic::transport::Uri;
 
 use grid::grid::{Timeline, retrieve_timeline};
+use security::key_management::{
+    ClientKeys,
+    ServerPublicKey,
+    retrieve_client_keys,
+    retrieve_server_public_keys,
+};
 
 #[derive(StructOpt)]
 #[structopt(name = "Client", about = "Reporting and verifying locations since 99.")]
@@ -26,7 +32,10 @@ struct Opt {
     idx : usize,
 
     #[structopt(name = "grid", long, default_value = "grid/grid.txt")]
-    grid_file : String
+    grid_file : String,
+
+    #[structopt(name = "keys", long, default_value = "security/keys")]
+    keys_dir : String,
 }
 
 #[tokio::main]
@@ -37,26 +46,47 @@ async fn main() -> Result<()> {
 
     let timeline = Arc::new(retrieve_timeline(&opt.grid_file)?);
 
+    let client_keys = retrieve_client_keys(&opt.keys_dir, opt.idx)?;
+    let server_keys = retrieve_server_public_keys(&opt.keys_dir)?;
+
     if !timeline.is_point(opt.idx) {
         return Err(eyre!("Error : Invalid id for client {:}.", opt.idx));
     }
 
-    let proofer = tokio::spawn(proofing_system::start_proofer(opt.idx, timeline.clone()));
+    let proofer =
+        tokio::spawn(proofing_system::start_proofer(opt.idx, timeline.clone(), client_keys.sign_key()));
 
-    tokio::spawn(epochs_generator(timeline.clone(), opt.idx, opt.server_url.clone()));
+    tokio::spawn(epochs_generator(timeline.clone(), opt.idx, opt.server_url.clone(), client_keys, server_keys));
 
     read_commands(timeline.clone(), opt.idx, opt.server_url).await;
 
-    let _x = proofer.await; // Not important resolt just dont end
+    let _x = proofer.await; // Not important result just dont end
 
     Ok(())
 }
 
-async fn reports_generator(timeline : Arc<Timeline>, idx : usize, epoch : usize, server_url : Uri) {
+async fn reports_generator(
+    timeline : Arc<Timeline>,
+    idx : usize,
+    epoch : usize,
+    server_url : Uri,
+    client_keys : Arc<ClientKeys>,
+    server_key : Arc<ServerPublicKey>) {
+
     if let Some((loc_x, loc_y)) = timeline.get_location_at_epoch(idx, epoch) {
         let (proofs, idx_ass) = proofing_system::get_proofs(timeline, idx, epoch).await;
         if proofs.len() > 0 && proofs.len() == idx_ass.len() {
-                let _r = reports::submit_location_report(idx, epoch, loc_x, loc_y, server_url, proofs, idx_ass).await;  // If failed should we try and resubmit
+                let _r = reports::submit_location_report(
+                    idx,
+                    epoch,
+                    loc_x,
+                    loc_y,
+                    server_url,
+                    proofs, idx_ass,
+                    client_keys.sign_key(),
+                    client_keys.private_key(),
+                    server_key.public_key()
+                ).await;  // If failed should we try and resubmit
             } else {
                 println!("Client {:} unable to generate report for epoch {:}.", idx, epoch);
             }
@@ -65,7 +95,17 @@ async fn reports_generator(timeline : Arc<Timeline>, idx : usize, epoch : usize,
     }
 }
 
-async fn epochs_generator(timeline : Arc<Timeline>, idx : usize, server_url : Uri) -> Result<()> { //TODO: f', create report
+async fn epochs_generator(
+    timeline : Arc<Timeline>,
+    idx : usize,
+    server_url : Uri,
+    client_keys : ClientKeys,
+    server_keys : ServerPublicKey
+) -> Result<()> { //TODO: f', create report
+
+    let client_keys = Arc::new(client_keys);
+    let server_keys = Arc::new(server_keys);
+
     let start = Instant::now() + Duration::from_millis(1000);
     let mut interval = interval_at(start, Duration::from_millis(10000));
 
@@ -74,7 +114,7 @@ async fn epochs_generator(timeline : Arc<Timeline>, idx : usize, server_url : Ur
 
         println!("Client {:} entered epoch {:}/{:}.", idx, epoch, timeline.epochs()-1);
 
-        tokio::spawn(reports_generator(timeline.clone(), idx, epoch, server_url.clone()));
+        tokio::spawn(reports_generator(timeline.clone(), idx, epoch, server_url.clone(), client_keys.clone(), server_keys.clone()));
     }
     Ok(())
 }

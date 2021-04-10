@@ -10,16 +10,20 @@ use tonic::{Request, Response, Status};
 
 use protos::{location_proof::Proof, location_storage::location_storage_server::{LocationStorage}};
 use protos::location_storage::{SubmitLocationReportRequest, SubmitLocationReportResponse,
-    ObtainLocationReportRequest, ObtainLocationReportResponse, Report};
+    ObtainLocationReportRequest, ObtainLocationReportResponse};
+
+use security::key_management::ServerKeys;
 
 pub struct MyLocationStorage {
     storage : Arc<Timeline>,
+    server_keys : Arc<ServerKeys>,
 }
 
 impl MyLocationStorage {
-    pub fn new(storage : Arc<Timeline>) -> MyLocationStorage {
+    pub fn new(storage : Arc<Timeline>, server_keys : Arc<ServerKeys>) -> MyLocationStorage {
         MyLocationStorage {
             storage,
+            server_keys,
         }
     }
 

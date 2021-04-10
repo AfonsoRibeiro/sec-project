@@ -10,14 +10,21 @@ use grid::grid::Timeline;
 use protos::{location_proof::Proof, location_storage::{ObtainLocationReportRequest, Report, SubmitLocationReportRequest}};
 use protos::location_storage::location_storage_client::LocationStorageClient;
 
+use sodiumoxide::crypto::sign;
+use sodiumoxide::crypto::box_;
+
+
 pub async fn submit_location_report(
     idx : usize,
     epoch : usize,
     pos_x : usize,
     pos_y : usize,
     url : Uri,
-    proofs_joined: Vec<Proof>, 
+    proofs_joined: Vec<Proof>,
     idx_ass : Vec<u64>,
+    sign_key : sign::SecretKey,
+    private_key : box_::SecretKey,
+    server_key : box_::PublicKey,
 ) -> Result<()> {
 
     let mut client = LocationStorageClient::connect(url).await?;
@@ -28,8 +35,8 @@ pub async fn submit_location_report(
         pos_x : pos_x as u64,
         pos_y : pos_y as u64,
         report : Some(Report {
-            proofs: proofs_joined,
-            idx_ass : idx_ass,
+            proofs : proofs_joined,
+            idx_ass,
         }),
     });
 

@@ -9,11 +9,12 @@ use protos::location_storage::location_storage_server::LocationStorageServer;
 use protos::location_master::location_master_server::LocationMasterServer;
 
 use crate::storage::Timeline;
+use security::key_management::ServerKeys;
 
-pub async fn start_server(addr : String, storage : Arc<Timeline>) -> Result<()> {
+pub async fn start_server(addr : String, storage : Arc<Timeline>, server_keys : Arc<ServerKeys>) -> Result<()> {
     let addr = addr.parse()?;
-    let validater = validating::MyLocationStorage::new(storage.clone());
-    let manager = management::MyLocationMaster::new(storage);
+    let validater = validating::MyLocationStorage::new(storage.clone(), server_keys.clone());
+    let manager = management::MyLocationMaster::new(storage.clone());
 
     println!("LocationStorageServer listening on {}", addr);
 

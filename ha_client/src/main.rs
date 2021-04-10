@@ -18,6 +18,9 @@ struct Opt {
 
     #[structopt(name = "size", long, default_value = "5")]
     grid_size : u64,
+
+    #[structopt(name = "keys", long, default_value = "security/keys")]
+    keys_dir : String,
 }
 
 #[tokio::main]

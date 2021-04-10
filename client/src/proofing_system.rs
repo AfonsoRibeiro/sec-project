@@ -16,7 +16,7 @@ use protos::location_proof::location_proof_server::{LocationProof, LocationProof
 
 use protos::location_proof::{RequestLocationProofRequest, RequestLocationProofResponse, Proof};
 
-
+use sodiumoxide::crypto::sign;
 
 fn get_address(idx : usize) -> String {
     format!("[::1]:6{:04}", idx)
@@ -29,14 +29,16 @@ fn get_url(idx : usize) -> String {
 // As Server
 struct Proofer {
     idx : usize,
-    timeline : Arc<Timeline>
+    timeline : Arc<Timeline>,
+    sign_key : sign::SecretKey,
 }
 
 impl Proofer {
-    fn new(idx : usize, timeline : Arc<Timeline>) -> Proofer {
+    fn new(idx : usize, timeline : Arc<Timeline>, sign_key : sign::SecretKey) -> Proofer {
         Proofer {
             idx,
             timeline,
+            sign_key,
         }
     }
 }
@@ -86,9 +88,9 @@ impl LocationProof for Proofer {
     }
 }
 
-pub async fn start_proofer(idx : usize, timeline : Arc<Timeline>) -> Result<()> {
+pub async fn start_proofer(idx : usize, timeline : Arc<Timeline>, sign_key : sign::SecretKey) -> Result<()> {
     let addr = get_address(idx).parse()?;
-    let proofer = Proofer::new(idx, timeline);
+    let proofer = Proofer::new(idx, timeline, sign_key);
 
     println!("LocationProofServer listening on {}\n", addr);
 
@@ -113,7 +115,7 @@ pub async fn request_location_proof(idx : usize, epoch : usize, id_dest : usize)
         epoch: epoch as u64,
     });
     match client.request_location_proof(request).await {
-        
+
         Ok(response) => {
             match response.get_ref().proof.clone() {
                 Some(proof) => Ok((proof, response.get_ref().idx_ass)),
