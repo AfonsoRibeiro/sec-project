@@ -13,4 +13,4 @@ TODO:
 
  - Fix interval_at, starting all from same time
 
- - Does the server need to store the state
+ - server needs to store the state

@@ -66,6 +66,12 @@ fn save_keys( size : usize) {
 
     let sk = ServerKeys::new(key_pairs, serversk);
     let server_public_key = ServerPublicKey::new(serverpk);
+
+
+    
+}
+
+fn save_client_keys(idx : usize, client : ClientKeys) {
     
 }
 
