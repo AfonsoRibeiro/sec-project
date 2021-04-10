@@ -7,7 +7,7 @@ use tonic::transport::Uri;
 
 use grid::grid::Timeline;
 
-use protos::{location_proof::Proof, location_storage::{ObtainLocationReportRequest, Report, SubmitLocationReportRequest}};
+use protos::{location_storage::{ObtainLocationReportRequest, Report, SubmitLocationReportRequest}};
 use protos::location_storage::location_storage_client::LocationStorageClient;
 
 use sodiumoxide::crypto::sign;
@@ -20,7 +20,7 @@ pub async fn submit_location_report(
     pos_x : usize,
     pos_y : usize,
     url : Uri,
-    proofs_joined: Vec<Proof>,
+    proofs_joined: Vec<Vec<u8>>,
     idx_ass : Vec<u64>,
     sign_key : sign::SecretKey,
     private_key : box_::SecretKey,

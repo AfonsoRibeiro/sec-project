@@ -7,7 +7,7 @@ use crate::storage::Timeline;
 
 use tonic::{Request, Response, Status};
 
-use protos::{location_proof, location_storage::location_storage_server::LocationStorage};
+use protos::location_storage::location_storage_server::LocationStorage;
 use protos::location_storage::{SubmitLocationReportRequest, SubmitLocationReportResponse,
     ObtainLocationReportRequest, ObtainLocationReportResponse};
 
@@ -53,7 +53,7 @@ impl MyLocationStorage {
         Ok((res_x.unwrap(), res_y.unwrap()))
     }
 
-    fn check_valid_location_report(&self, pos_x: usize, pos_y: usize, idxs : Vec<u64>, proofs: Vec<location_proof::Proof>) -> bool {
+    fn check_valid_location_report(&self, pos_x: usize, pos_y: usize, idxs : Vec<u64>, proofs: Vec<Vec<u8>>) -> bool {
         let f_line : usize = 1;
         let ((lower_x, lower_y), (upper_x, upper_y)) = self.storage.valid_neighbour(pos_x, pos_y);
         let mut counter = 0;
@@ -62,7 +62,7 @@ impl MyLocationStorage {
                 println!("idx");
                 if let Some(sign_key) = self.server_keys.client_sign_keys(idx) {
                     println!("sign key");
-                    if let Ok(proof) = proof::verify_proof(&sign_key, &proof.proof) {
+                    if let Ok(proof) = proof::verify_proof(&sign_key, &proof) {
                         println!("proof");
                         let (x, y)  = proof.loc_req();
                         if lower_x <= x && x <= upper_x && lower_y <= y && y <= upper_y {

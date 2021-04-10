@@ -14,3 +14,5 @@ TODO:
  - Fix interval_at, starting all from same time
 
  - server needs to store the state
+
+ - do error response need to be encrypted?

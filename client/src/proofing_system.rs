@@ -70,14 +70,12 @@ impl LocationProof for Proofer {
                 if neighbours.iter().any(|&i| i == req_idx) {
                     let (x, y) = self.timeline.get_location_at_epoch(self.idx, epoch).unwrap();
                     Ok(Response::new(RequestLocationProofResponse {
-                        proof : Some (location_proof::Proof {
-                            proof : sign_proof(&self.sign_key, proof::Proof::new(
+                        proof : sign_proof(&self.sign_key, proof::Proof::new(
                                 epoch,
                                 req_idx,
                                 self.idx,
                                 (x, y),
-                            ))
-                        }),
+                            )),
                         idx_ass : self.idx as u64,
 
                     }))
@@ -106,7 +104,7 @@ pub async fn start_proofer(idx : usize, timeline : Arc<Timeline>, sign_key : sig
 
 // As Client
 
-pub async fn request_location_proof(idx : usize, epoch : usize, id_dest : usize) -> Result<(location_proof::Proof, u64)> {
+pub async fn request_location_proof(idx : usize, epoch : usize, id_dest : usize) -> Result<(Vec<u8>, u64)> {
 
     let mut client = LocationProofClient::connect(get_url(id_dest)).await.wrap_err_with(
         || format!("Failed to connect to client with id: {:}.", id_dest)
@@ -119,17 +117,14 @@ pub async fn request_location_proof(idx : usize, epoch : usize, id_dest : usize)
     match client.request_location_proof(request).await {
 
         Ok(response) => {
-            match response.get_ref().proof.clone() {
-                Some(proof) => Ok((proof, response.get_ref().idx_ass)),
-                None => Err(eyre!("RequestLocationProof failed, no proof was recieved.")),
-            }
+            Ok((response.get_ref().proof.clone(), response.get_ref().idx_ass))
         }
         Err(status) => Err(eyre!("RequestLocationProof failed with code {:?} and message {:?}.",
                             status.code(), status.message())),
     }
 }
 
-pub async fn get_proofs(timeline : Arc<Timeline>, idx : usize, epoch : usize) -> (Vec<location_proof::Proof>, Vec<u64>) {
+pub async fn get_proofs(timeline : Arc<Timeline>, idx : usize, epoch : usize) -> (Vec<Vec<u8>>, Vec<u64>) {
 
     let nec_proofs : usize = 2; // TODO 2*f' + 1
 
@@ -142,7 +137,7 @@ pub async fn get_proofs(timeline : Arc<Timeline>, idx : usize, epoch : usize) ->
         |&id_dest| request_location_proof(idx, epoch, id_dest)
     ).collect();
 
-    let mut report : Vec<location_proof::Proof> = Vec::with_capacity(nec_proofs);
+    let mut report : Vec<Vec<u8>> = Vec::with_capacity(nec_proofs);
     let mut idx : Vec<u64> = Vec::with_capacity(nec_proofs);  // Number of proofs needed
 
     loop {

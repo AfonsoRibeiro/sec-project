@@ -15,16 +15,12 @@ service LocationProof {
 //     uint64 loc_y_ass = 5;
 // }
 
-message Proof { //proof is encrypted with idx
-    bytes proof = 1;
-}
-
 message RequestLocationProofRequest {
     uint64 idx = 1;
     uint64 epoch = 2;
 }
 
 message RequestLocationProofResponse {
-    Proof proof = 1;
+    bytes proof = 1;
     uint64 idx_ass = 2;
 }

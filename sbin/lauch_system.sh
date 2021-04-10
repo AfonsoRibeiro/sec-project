@@ -13,9 +13,9 @@ server_url="http://[::1]:50051"
 dir="debug"
 #dir="release"
 
-echo "Generating grid"
-echo
-./target/$dir/grid -s $grid_size -p $n_points -e $epochs -f $grid_file
+# echo "Generating grid"
+# echo
+# ./target/$dir/grid -s $grid_size -p $n_points -e $epochs -f $grid_file
 
 echo "Generating keys"
 echo
