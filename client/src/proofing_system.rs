@@ -11,10 +11,11 @@ use futures::select;
 
 use tonic::{transport::Server, Request, Response, Status};
 
-use protos::location_proof::location_proof_client::LocationProofClient;
+use protos::location_proof::{self, location_proof_client::LocationProofClient};
 use protos::location_proof::location_proof_server::{LocationProof, LocationProofServer};
 
-use protos::location_proof::{RequestLocationProofRequest, RequestLocationProofResponse, Proof};
+use protos::location_proof::{RequestLocationProofRequest, RequestLocationProofResponse};
+use security::proof::{self, sign_proof};
 
 use sodiumoxide::crypto::sign;
 
@@ -69,12 +70,13 @@ impl LocationProof for Proofer {
                 if neighbours.iter().any(|&i| i == req_idx) {
                     let (x, y) = self.timeline.get_location_at_epoch(self.idx, epoch).unwrap();
                     Ok(Response::new(RequestLocationProofResponse {
-                        proof : Some (Proof {
-                            idx_req : req_idx as u64,
-                            epoch: epoch as u64,
-                            idx_ass: self.idx as u64,
-                            loc_x_req: x as u64,
-                            loc_y_req: y as u64,
+                        proof : Some (location_proof::Proof {
+                            proof : sign_proof(&self.sign_key, proof::Proof::new(
+                                epoch,
+                                req_idx,
+                                self.idx,
+                                (x, y),
+                            ))
                         }),
                         idx_ass : self.idx as u64,
 
@@ -104,7 +106,7 @@ pub async fn start_proofer(idx : usize, timeline : Arc<Timeline>, sign_key : sig
 
 // As Client
 
-pub async fn request_location_proof(idx : usize, epoch : usize, id_dest : usize) -> Result<(Proof, u64)> {
+pub async fn request_location_proof(idx : usize, epoch : usize, id_dest : usize) -> Result<(location_proof::Proof, u64)> {
 
     let mut client = LocationProofClient::connect(get_url(id_dest)).await.wrap_err_with(
         || format!("Failed to connect to client with id: {:}.", id_dest)
@@ -127,9 +129,9 @@ pub async fn request_location_proof(idx : usize, epoch : usize, id_dest : usize)
     }
 }
 
-pub async fn get_proofs(timeline : Arc<Timeline>, idx : usize, epoch : usize) -> (Vec<Proof>, Vec<u64>) {
+pub async fn get_proofs(timeline : Arc<Timeline>, idx : usize, epoch : usize) -> (Vec<location_proof::Proof>, Vec<u64>) {
 
-    let nec_proofs : usize = 1; // TODO 2*f' + 1
+    let nec_proofs : usize = 2; // TODO 2*f' + 1
 
     let neighbours = match timeline.get_neighbours_at_epoch(idx, epoch) {
         Some(neighbours) => neighbours,
@@ -140,9 +142,9 @@ pub async fn get_proofs(timeline : Arc<Timeline>, idx : usize, epoch : usize) ->
         |&id_dest| request_location_proof(idx, epoch, id_dest)
     ).collect();
 
-    let mut report : Vec<Proof> = Vec::with_capacity(nec_proofs);
+    let mut report : Vec<location_proof::Proof> = Vec::with_capacity(nec_proofs);
     let mut idx : Vec<u64> = Vec::with_capacity(nec_proofs);  // Number of proofs needed
-    
+
     loop {
         select! {
             res = responses.select_next_some() => {

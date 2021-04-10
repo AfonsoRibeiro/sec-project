@@ -79,7 +79,7 @@ impl Timeline {
     pub fn add_user_location_at_epoch(&self, epoch: usize, pos_x : usize, pos_y : usize, idx: usize) -> Result<()>{ //TODO: check if it is valid -> report
         if self.blacklist.contains(&idx) {
             return Err(eyre!("Malicious user detected!"));
-        } 
+        }
         if let Some(user_pos) =  self.routes.get_mut(&epoch) {
             if let Some(_) = user_pos.insert(idx,(pos_x, pos_y)) {
                 user_pos.remove(&idx);
@@ -93,7 +93,7 @@ impl Timeline {
            self.routes.insert(epoch, users_loc);
         }
         let mut vec = self.timeline.write().unwrap(); // Fix this : dont assume this
-        
+
         for epoch_value in vec.len()..=epoch {
             vec.push(Grid::new_empty(self.size));
         }
@@ -109,7 +109,7 @@ impl Timeline {
         let lower_x = if x == 0 {x} else {x-1};
         let lower_y = if y == 0 {y} else {y-1};
         let upper_x = if x+1 == self.size {x} else {x+1};
-        let upper_y = if y+1 == self.size {x} else {y+1};
+        let upper_y = if y+1 == self.size {y} else {y+1};
         ((lower_x, lower_y), (upper_x, upper_y))
     }
 

@@ -19,7 +19,7 @@ echo
 
 echo "Generating keys"
 echo
-./target/$dir/security --n_clients $n_points --keys $keys_dir
+./target/$dir/security --clients $n_points --keys $keys_dir
 
 echo "Starting Server"
 echo

@@ -74,6 +74,20 @@ impl ServerKeys{
     }
 
     pub fn private_key(&self) -> box_::SecretKey { self.private_key.clone() }
+    pub fn client_sign_keys(&self, idx : usize) -> Option<sign::PublicKey> {
+        if let Some((_, sign)) = self.public_keys.get(&idx) {
+            Some(sign.clone())
+        }else{
+            None
+        }
+    }
+    pub fn client_public_keys(&self, idx : usize) -> Option<box_::PublicKey> {
+        if let Some((pkey, _)) = self.public_keys.get(&idx) {
+            Some(pkey.clone())
+        }else{
+            None
+        }
+    }
     pub fn ha_public_key(&self) -> box_::PublicKey { self.ha_public_key.clone() }
 }
 
@@ -146,37 +160,37 @@ fn save_ha_client_keys(keys_dir : &str, ha_keys : HAClientKeys) -> Result<()> {
 }
 
 pub fn retrieve_client_keys(keys_dir : &str, idx : usize) -> Result<ClientKeys> {
-    let file = File::create(format!("{:}/client_{:04}.keys", keys_dir, idx))?;
+    let file = File::open(format!("{:}/client_{:04}.keys", keys_dir, idx))?;
     let reader = BufReader::new(file);
 
     Ok(serde_json::from_reader(reader).wrap_err_with(
-        || format!("Failed to parse struct Timeline from file '{:}'", format!("{:}/client_{:04}.keys", keys_dir, idx))
+        || format!("Failed to parse struct ClientKeys from file '{:}'", format!("{:}/client_{:04}.keys", keys_dir, idx))
     )? )
 }
 
 pub fn retrieve_server_keys(keys_dir : &str)  -> Result<ServerKeys> {
-    let file = File::create(format!("{:}/server.keys", keys_dir))?;
+    let file = File::open(format!("{:}/server.keys", keys_dir))?;
     let reader = BufReader::new(file);
 
     Ok(serde_json::from_reader(reader).wrap_err_with(
-        || format!("Failed to parse struct Timeline from file '{:}'", format!("{:}/server.keys", keys_dir))
+        || format!("Failed to parse struct ServerKeys from file '{:}'", format!("{:}/server.keys", keys_dir))
     )? )
 }
 
 pub fn retrieve_server_public_keys(keys_dir : &str) -> Result<ServerPublicKey> {
-    let file = File::create(format!("{:}/server_public.keys", keys_dir))?;
+    let file = File::open(format!("{:}/server_public.keys", keys_dir))?;
     let reader = BufReader::new(file);
 
     Ok(serde_json::from_reader(reader).wrap_err_with(
-        || format!("Failed to parse struct Timeline from file '{:}'", format!("{:}/server_public.keys", keys_dir))
+        || format!("Failed to parse struct ServerPublicKey from file '{:}'", format!("{:}/server_public.keys", keys_dir))
     )? )
 }
 
 pub fn retrieve_ha_client_keys(keys_dir : &str) -> Result<HAClientKeys> {
-    let file = File::create(format!("{:}/ha_client.keys", keys_dir))?;
+    let file = File::open(format!("{:}/ha_client.keys", keys_dir))?;
     let reader = BufReader::new(file);
 
     Ok(serde_json::from_reader(reader).wrap_err_with(
-        || format!("Failed to parse struct Timeline from file '{:}'", format!("{:}/server_public.keys", keys_dir))
+        || format!("Failed to parse struct HAClientKeys from file '{:}'", format!("{:}/server_public.keys", keys_dir))
     )? )
 }

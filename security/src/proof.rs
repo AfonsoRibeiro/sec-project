@@ -1,6 +1,7 @@
 use serde_derive::{Deserialize, Serialize};
 use sodiumoxide::crypto::sign::{self, PublicKey, SecretKey};
-use color_eyre::eyre::Result;
+use color_eyre::eyre::{Result, Context};
+use eyre::eyre;
 
 #[derive(Debug,Serialize,Deserialize)]
 pub struct Proof {
@@ -19,6 +20,9 @@ impl Proof {
             loc_req,
         }
     }
+    pub fn loc_req(&self) -> (usize, usize) {
+        self.loc_req
+    }
 }
 
 pub fn sign_proof(oursk : &SecretKey, proof : Proof) -> Vec<u8>{
@@ -30,8 +34,11 @@ pub fn sign_proof(oursk : &SecretKey, proof : Proof) -> Vec<u8>{
 
 pub fn verify_proof(theirpk : &PublicKey, ciphertest : &Vec<u8>) -> Result<Proof> {
 
-    let decoded_proof = sign::verify(ciphertest, theirpk).unwrap(); //TODO: fix this
-    let proof = serde_json::from_slice(&decoded_proof)?;
+    let decoded_proof = sign::verify(ciphertest, theirpk);
+    if decoded_proof.is_err() {
+        return  Err(eyre!("Failed to verify proof"));
+    }
+    let proof = serde_json::from_slice(&decoded_proof.unwrap()).wrap_err_with(|| format!("Failed to parse proof"))?;
 
     Ok(proof)
 }

@@ -7,7 +7,7 @@ use color_eyre::eyre::Result;
 #[structopt(name = "Security", about = "Creates the key pair")]
 struct Opt {
 
-    #[structopt(long, default_value = "20")]
+    #[structopt(name = "clients", long, default_value = "20")]
     n_clients : usize,
 
     #[structopt(name = "keys", long, default_value = "security/keys")]

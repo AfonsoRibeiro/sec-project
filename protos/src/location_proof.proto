@@ -7,17 +7,17 @@ service LocationProof {
     rpc RequestLocationProof (RequestLocationProofRequest) returns (RequestLocationProofResponse) {}
 }
 
-message Proof {
-    uint64 idx_req = 1;
-    uint64 epoch = 2;
-    uint64 idx_ass = 3;
-    uint64 loc_x_req = 4;
-    uint64 loc_y_req = 5;
-}
+// message Proof {
+//     uint64 idx_req = 1;
+//     uint64 epoch = 2;
+//     uint64 idx_ass = 3;
+//     uint64 loc_x_ass = 4;
+//     uint64 loc_y_ass = 5;
+// }
 
-/*message Proof { //proof is encrypted with idx
-    repeated uint8 proof = 1;
-}*/
+message Proof { //proof is encrypted with idx
+    bytes proof = 1;
+}
 
 message RequestLocationProofRequest {
     uint64 idx = 1;
