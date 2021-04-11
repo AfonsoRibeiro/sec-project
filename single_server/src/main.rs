@@ -19,6 +19,9 @@ struct Opt {
 
     #[structopt(name = "keys", long, default_value = "security/keys/")]
     keys_dir : String,
+
+    #[structopt(name = "storage", long, default_value = "single_server/storage.txt")]
+    storage_file : String,
 }
 
 #[tokio::main]
@@ -29,7 +32,12 @@ async fn main() -> Result<()> {
 
     let opt = Opt::from_args();
 
-    let storage = Arc::new( storage::Timeline::new(opt.grid_size) );
+    let storage = if let Ok(storage) = storage::retrieve_storage(&opt.storage_file) {
+        Arc::new(storage)
+    } else{
+        Arc::new( storage::Timeline::new(opt.grid_size, opt.storage_file))
+    };
+
     let server_keys = Arc::new(retrieve_server_keys(&opt.keys_dir)?);
 
     server::start_server(opt.server_addr, storage, server_keys).await?;

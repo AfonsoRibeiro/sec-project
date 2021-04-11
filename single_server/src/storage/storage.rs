@@ -1,23 +1,31 @@
-use std::{fs::File, io::{BufReader, BufWriter}, sync::RwLock, usize};
-
-use dashmap::{DashMap, DashSet};
+use std::{fs::File, io::{BufReader, BufWriter}};
+use std::collections::{HashMap, HashSet};
+use std::sync::RwLock;
 
 use serde_derive::{Deserialize, Serialize};
 use eyre::{eyre, Context};
-use color_eyre::{eyre::Result, owo_colors::OwoColorize};
-
+use color_eyre::eyre::Result;
 use sodiumoxide::crypto::box_::Nonce;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 struct Report {
     loc : (usize, usize),
-    //report : bitvector
-} 
+    report : Vec<u8>
+}
 
+impl Report {
+
+    fn new(loc: (usize, usize), report: Vec<u8>) -> Report {
+        Report {
+            loc,
+            report
+        }
+    }
+}
 // pos_x -> pos_y -> user_id
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 struct Grid {
-    grid : Vec<Vec<DashSet<usize>>>,
+    grid : Vec<Vec<RwLock<HashSet<usize>>>>,
     size: usize
 }
 
@@ -25,82 +33,71 @@ impl Grid {
 
     fn new_empty(size : usize) -> Grid {
         Grid {
-            grid : (0..size).map(|_| (0..size).map(|_| DashSet::new()).collect()).collect(),
+            grid : (0..size).map(|_| (0..size).map(|_| RwLock::new(HashSet::new()) ).collect()).collect(),
             size
         }
     }
 
     fn add_user_location(&self, pos_x : usize, pos_y : usize, idx : usize) {
-        self.grid[pos_x][pos_y].insert(idx);
-    }
-
-    fn get_neighbours(&self, pos_x : usize, pos_y : usize, idx : usize) -> Vec<usize>{
-        let mut neighbours : Vec<usize> = vec![];
-
-        let lower_x = if pos_x == 0 {pos_x} else {pos_x-1};
-        let lower_y = if pos_y == 0 {pos_y} else {pos_y-1};
-        let upper_x = if pos_x+1 == self.size {pos_x} else {pos_x+1};
-        let upper_y = if pos_y+1 == self.size {pos_y} else {pos_y+1};
-
-        for x in lower_x..=upper_x {
-            for y in lower_y..=upper_y {
-                for id in self.grid[x][y].iter(){
-                    neighbours.push(id.clone());
-                }
-            }
-        }
-        neighbours.retain(|&p| p != idx); // remove itself
-
-        neighbours
+        self.grid[pos_x][pos_y].write().unwrap().insert(idx); //fix unwrap
     }
 
     fn get_users_at_location(&self, pos_x : usize, pos_y : usize) ->Vec<usize> {
-        self.grid[pos_x][pos_y].iter().map(|idx| idx.clone()).collect()
+        self.grid[pos_x][pos_y].read().unwrap().iter().map(|&idx| idx).collect() //fix unwrap
     }
 }
 
 
-#[derive(Debug)] 
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Timeline {
-    routes : DashMap<usize, DashMap<usize, ((usize, usize), Vec<u8>)>>, //epoch -> user id -> location
+    routes : RwLock<HashMap<usize, RwLock<HashMap<usize, Report>>>>, //epoch -> user id -> location
     timeline : RwLock<Vec<Grid>>,
     size : usize,
-    blacklist : DashSet<usize>,
-    nonces : DashMap<usize, DashSet<Nonce>>
+    blacklist : RwLock<HashSet<usize>>,
+    nonces : RwLock<HashMap<usize, HashSet<Nonce>>>,
+    filename: String,
 }
 
 impl Timeline {
-    pub fn new(size : usize) -> Timeline {
+    pub fn new(size : usize, filename: String) -> Timeline {
         Timeline {
-            routes : DashMap::new(),
+            routes : RwLock::new(HashMap::new()),
             timeline : RwLock::new(vec![]),
             size,
-            blacklist : DashSet::new(),
-            nonces : DashMap::new(),
+            blacklist : RwLock::new(HashSet::new()),
+            nonces : RwLock::new(HashMap::new()),
+            filename,
         }
     }
 
     pub fn add_user_location_at_epoch(&self, epoch: usize, (pos_x, pos_y) : (usize, usize), idx: usize, report : Vec<u8>) -> Result<()>{ //TODO: check if it is valid -> report
-        if self.blacklist.contains(&idx) {
+        if self.blacklist.read().unwrap().contains(&idx) {
             return Err(eyre!("Malicious user detected!"));
         }
-        if let Some(user_pos) =  self.routes.get_mut(&epoch) {
-            if let Some(_) = user_pos.insert(idx,((pos_x, pos_y), report)) {
-                user_pos.remove(&idx);
-                self.blacklist.insert(idx);
-                return Err(eyre!("Two positions submitted for the same epoch"));
+        let mut routes = self.routes.write().unwrap();
+        let report = Report::new((pos_x, pos_y), report);
+        if let Some(user_pos) =  routes.get_mut(&epoch) {
+            if let Some(report) = user_pos.write().unwrap().insert(idx,report) {
+                if report.loc != (pos_x, pos_y) {
+                    user_pos.write().unwrap().remove(&idx);
+                    self.blacklist.write().unwrap().insert(idx);
+                    return Err(eyre!("Two positions submitted for the same epoch"));
+                }
             }
 
         } else { //RwLock bc of insert (before if else)
-           let users_loc= DashMap::new();
-           users_loc.insert(idx, ((pos_x, pos_y), report));
-           self.routes.insert(epoch, users_loc);
+           let users_loc = RwLock::new(HashMap::new());
+           users_loc.write().unwrap().insert(idx, report);
+           routes.insert(epoch, users_loc);
         }
-        let mut vec = self.timeline.write().unwrap(); // Fix this : dont assume this
+        {
+            let mut vec = self.timeline.write().unwrap(); // Fix this : dont assume this
 
-        for epoch_value in vec.len()..=epoch {
-            vec.push(Grid::new_empty(self.size));
+            for _ in vec.len()..=epoch {
+                vec.push(Grid::new_empty(self.size));
+            }
         }
+        let vec = self.timeline.read().unwrap();
         vec[epoch].add_user_location(pos_x, pos_y, idx);
         Ok(())
     }
@@ -128,41 +125,44 @@ impl Timeline {
     }
 
     pub fn get_user_location_at_epoch(&self, epoch: usize, idx: usize) -> Option<(usize, usize)> {
-        if let Some(user_loc ) = self.routes.get(&epoch) {
-            if let Some(position) = user_loc.get(&idx){
-                let ((x,y), _) = position.value();
-                return Some((*x,*y));
+        if let Some(user_loc ) = self.routes.read().unwrap().get(&epoch) {
+            if let Some(position) = user_loc.read().unwrap().get(&idx){
+                return Some(position.loc);
             }
         }
         None
     }
 
     pub fn check_nonce(&self, idx : usize, nonce : Nonce) -> bool {
-        if let Some(user_nonces) = self.nonces.get_mut(&idx) {
+        let mut nonces = self.nonces.write().unwrap();
+        if let Some(user_nonces) = nonces.get_mut(&idx){
             user_nonces.insert(nonce)
         } else { //RwLock bc of insert (before if else)
-           let user_nonce= DashSet::new();
+           let mut user_nonce= HashSet::new();
            user_nonce.insert(nonce);
-           self.nonces.insert(idx, user_nonce);
+           nonces.insert(idx, user_nonce);
            true
         }
     }
+
+    pub fn filename(&self) -> &str {
+        &self.filename
+    }
 }
 
+pub async fn save_storage(filename : &str, timeline : &Timeline) -> Result<()> { //TODO: make it async, depends on how the database is updated
+    let file = File::create(filename)?;
 
-// pub fn save_storage(file_name : &str, timeline : &Timeline) -> Result<()> { //TODO: make it async, depends on how the database is updated
-//     let file = File::create(file_name)?;
+    serde_json::to_writer(BufWriter::new(file), &timeline)?;
 
-//     serde_json::to_writer(BufWriter::new(file), timeline)?;
+    Ok(())
+}
 
-//     Ok(())
-// }
+pub fn retrieve_storage(file_name : &str) -> Result<Timeline> {
+    let file = File::open(file_name)?;
+    let reader = BufReader::new(file);
 
-// pub fn retrieve_storage(file_name : &str) -> Result<Timeline> {
-//     let file = File::open(file_name)?;
-//     let reader = BufReader::new(file);
-
-//     Ok(serde_json::from_reader(reader).wrap_err_with(
-//         || format!("Failed to parse struct Timeline from file '{:}'", file_name)
-//     )? )
-// }
+    Ok(serde_json::from_reader(reader).wrap_err_with(
+        || format!("Failed to parse struct Timeline from file '{:}'", file_name)
+    )? )
+}

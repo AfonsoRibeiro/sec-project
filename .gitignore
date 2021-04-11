@@ -1,3 +1,4 @@
 target
 security/keys/**
 grid/grid.txt
+single_server/storage.txt

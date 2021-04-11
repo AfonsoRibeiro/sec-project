@@ -4,7 +4,7 @@ use sodiumoxide::crypto::box_;
 
 use std::{convert::TryFrom, sync::Arc};
 
-use crate::storage::Timeline;
+use crate::storage::{Timeline,save_storage};
 
 use tonic::{Request, Response, Status};
 
@@ -131,7 +131,13 @@ impl LocationStorage for MyLocationStorage {
         println!("Checking proofs");
         if self.check_valid_location_report(req_idx, &report) {
             match self.storage.add_user_location_at_epoch(report.epoch(), report.loc(), req_idx, request.report.clone()) {
-                Ok(_) => Ok(Response::new(SubmitLocationReportResponse::default() )),
+                Ok(_) => {
+                    if let Ok(_) = save_storage(self.storage.filename(), &self.storage).await {
+                        Ok(Response::new(SubmitLocationReportResponse::default() ))
+                    }else {
+                        Err(Status::aborted("Unable to permanently save information."))
+                    }
+                }
                 Err(_) => Err(Status::permission_denied("Permission denied!!")),
             }
          } else {

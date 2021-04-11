@@ -11,8 +11,8 @@ TODO:
 
  - Fix interval_at, starting all from same time //aprox should be enough
 
- - server needs to store the state
+ - server needs to store the state, is a single file enough?
 
  - do error response need to be encrypted?
 
-  - Save nonces and reports
+ - Save nonces and reports
