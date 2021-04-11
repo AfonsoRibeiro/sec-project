@@ -19,13 +19,15 @@ use security::report::decode_report;
 pub struct MyLocationStorage {
     storage : Arc<Timeline>,
     server_keys : Arc<ServerKeys>,
+    f_line : usize,
 }
 
 impl MyLocationStorage {
-    pub fn new(storage : Arc<Timeline>, server_keys : Arc<ServerKeys>) -> MyLocationStorage {
+    pub fn new(storage : Arc<Timeline>, server_keys : Arc<ServerKeys>, f_line : usize) -> MyLocationStorage {
         MyLocationStorage {
             storage,
             server_keys,
+            f_line
         }
     }
 
@@ -63,9 +65,6 @@ impl MyLocationStorage {
 
         let (epoch, (pos_x, pos_y)) = (report.epoch(), report.loc());
 
-
-        let f_line : usize = 1; // TODO
-
         let ((lower_x, lower_y), (upper_x, upper_y)) = self.storage.valid_neighbour(pos_x, pos_y);
         let mut counter = 0;
 
@@ -83,11 +82,11 @@ impl MyLocationStorage {
                     }
                 }
             }
-            if counter > f_line {
+            if counter > self.f_line {
                 break;
             }
         }
-        counter > f_line
+        counter > self.f_line
     }
 }
 

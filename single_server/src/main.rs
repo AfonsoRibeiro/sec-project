@@ -22,6 +22,9 @@ struct Opt {
 
     #[structopt(name = "storage", long, default_value = "single_server/storage.txt")]
     storage_file : String,
+
+    #[structopt(name = "fline", long, default_value = "3")]
+    f_line : usize,
 }
 
 #[tokio::main]
@@ -40,7 +43,7 @@ async fn main() -> Result<()> {
 
     let server_keys = Arc::new(retrieve_server_keys(&opt.keys_dir)?);
 
-    server::start_server(opt.server_addr, storage, server_keys).await?;
+    server::start_server(opt.server_addr, storage, server_keys, opt.f_line).await?;
 
     Ok(())
 }

@@ -124,9 +124,9 @@ pub async fn request_location_proof(idx : usize, epoch : usize, id_dest : usize)
     }
 }
 
-pub async fn get_proofs(timeline : Arc<Timeline>, idx : usize, epoch : usize) -> (Vec<Vec<u8>>, Vec<usize>) {
+pub async fn get_proofs(timeline : Arc<Timeline>, idx : usize, epoch : usize, f_line : usize) -> (Vec<Vec<u8>>, Vec<usize>) {
 
-    let nec_proofs : usize = 2; // TODO 2*f' + 1
+    let nec_proofs = f_line * 2 + 1;
 
     let neighbours = match timeline.get_neighbours_at_epoch(idx, epoch) {
         Some(neighbours) => neighbours,

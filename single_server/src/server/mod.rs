@@ -11,9 +11,9 @@ use protos::location_master::location_master_server::LocationMasterServer;
 use crate::storage::Timeline;
 use security::key_management::ServerKeys;
 
-pub async fn start_server(addr : String, storage : Arc<Timeline>, server_keys : Arc<ServerKeys>) -> Result<()> {
+pub async fn start_server(addr : String, storage : Arc<Timeline>, server_keys : Arc<ServerKeys>, f_line : usize) -> Result<()> {
     let addr = addr.parse()?;
-    let validater = validating::MyLocationStorage::new(storage.clone(), server_keys.clone());
+    let validater = validating::MyLocationStorage::new(storage.clone(), server_keys.clone(), f_line);
     let manager = management::MyLocationMaster::new(storage.clone());
 
     println!("LocationStorageServer listening on {}", addr);

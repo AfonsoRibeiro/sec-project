@@ -16,3 +16,5 @@ TODO:
  - do error response need to be encrypted?
 
  - Save nonces and reports
+
+ - Can f_line just be a random number?

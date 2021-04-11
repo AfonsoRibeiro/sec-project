@@ -36,6 +36,9 @@ struct Opt {
 
     #[structopt(name = "keys", long, default_value = "security/keys")]
     keys_dir : String,
+
+    #[structopt(name = "fline", long, default_value = "3")]
+    f_line : usize,
 }
 
 #[tokio::main]
@@ -60,7 +63,7 @@ async fn main() -> Result<()> {
     let proofer =
         tokio::spawn(proofing_system::start_proofer(opt.idx, timeline.clone(), client_keys.sign_key()));
 
-    tokio::spawn(epochs_generator(timeline.clone(), opt.idx, opt.server_url.clone(), client_keys, server_keys));
+    tokio::spawn(epochs_generator(timeline.clone(), opt.idx, opt.server_url.clone(), client_keys, server_keys, opt.f_line));
 
     read_commands(timeline.clone(), opt.idx, opt.server_url).await;
 
@@ -75,22 +78,24 @@ async fn reports_generator(
     epoch : usize,
     server_url : Uri,
     client_keys : Arc<ClientKeys>,
-    server_key : Arc<ServerPublicKey>) {
+    server_key : Arc<ServerPublicKey>,
+    f_line : usize ) {
 
     if let Some((loc_x, loc_y)) = timeline.get_location_at_epoch(idx, epoch) {
-        let (proofs, idxs_ass) = proofing_system::get_proofs(timeline, idx, epoch).await;
+        let (proofs, idxs_ass) = proofing_system::get_proofs(timeline, idx, epoch, f_line).await;
         if proofs.len() > 0 && proofs.len() == idxs_ass.len() {
-                let _r = reports::submit_location_report(
-                    idx,
-                    epoch,
-                    (loc_x, loc_y),
-                    server_url,
-                    proofs,
-                    idxs_ass,
-                    client_keys.sign_key(),
-                    client_keys.private_key(),
-                    server_key.public_key()
-                ).await;  // If failed should we try and resubmit
+            let _r = reports::submit_location_report(
+                idx,
+                epoch,
+                (loc_x, loc_y),
+                server_url,
+                proofs,
+                idxs_ass,
+                client_keys.sign_key(),
+                client_keys.private_key(),
+                server_key.public_key()
+            ).await;  // TODO FIX If failed should we try and resubmit
+
             } else {
                 println!("Client {:} unable to generate report for epoch {:}.", idx, epoch);
             }
@@ -104,21 +109,22 @@ async fn epochs_generator(
     idx : usize,
     server_url : Uri,
     client_keys : ClientKeys,
-    server_keys : ServerPublicKey
-) -> Result<()> { //TODO: f', create report
+    server_keys : ServerPublicKey,
+    f_line : usize,
+) -> Result<()> {
 
     let client_keys = Arc::new(client_keys);
     let server_keys = Arc::new(server_keys);
 
-    let start = Instant::now() + Duration::from_millis(1000);
-    let mut interval = interval_at(start, Duration::from_millis(10000));
+    let start = Instant::now() + Duration::from_millis(2000);
+    let mut interval = interval_at(start, Duration::from_millis(15000));
 
     for epoch in 0..timeline.epochs() {
         interval.tick().await;
 
         println!("Client {:} entered epoch {:}/{:}.", idx, epoch, timeline.epochs()-1);
 
-        tokio::spawn(reports_generator(timeline.clone(), idx, epoch, server_url.clone(), client_keys.clone(), server_keys.clone()));
+        tokio::spawn(reports_generator(timeline.clone(), idx, epoch, server_url.clone(), client_keys.clone(), server_keys.clone(), f_line));
     }
     Ok(())
 }
