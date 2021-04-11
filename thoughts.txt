@@ -5,14 +5,14 @@ users have no encryption, shoud the requester just put the id alongside the proo
 Proof as location of proffer??
 
 TODO:
- - (Maybe) HA_client also as access to grid, and compares server responses to expected (useful for testing)
-
  - Cryptography
 
  - (K_ser K_req K_ass) Proof = {id_ass + {id_req + epoch, KPriv_ass}, KPub_ser}
 
- - Fix interval_at, starting all from same time
+ - Fix interval_at, starting all from same time //aprox should be enough
 
  - server needs to store the state
 
  - do error response need to be encrypted?
+
+  - Save nonces and reports

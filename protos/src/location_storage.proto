@@ -7,23 +7,21 @@ service LocationStorage {
     rpc ObtainLocationReport (ObtainLocationReportRequest) returns (ObtainLocationReportResponse) {}
 }
 
-message Report {
-    repeated bytes proofs = 1;
-    repeated uint64 idx_ass = 2;
-}
+// message Report {
+//     repeated bytes proofs = 1;
+//     repeated uint64 idx_ass = 2;
+// }
 
-message SubmitLocationReportRequest {
-    Report report = 1;
-    uint64 idx = 2;
-    uint64 pos_x = 3;
-    uint64 pos_y = 4;
-    uint64 epoch = 5;
-}
-
-// message SubmitLocationReportRequest { //report is encrypted with idx
-//     bytes report = 1;
+// message SubmitLocationReportRequest {
+//     Report report = 1;
 //     uint64 idx = 2;
 // }
+
+message SubmitLocationReportRequest { //report is encrypted with idx
+    bytes report = 1;
+    uint64 idx = 2;
+    bytes nonce = 3;
+}
 
 message SubmitLocationReportResponse {}
 

@@ -73,22 +73,30 @@ impl ServerKeys{
         }
     }
 
-    pub fn private_key(&self) -> box_::SecretKey { self.private_key.clone() }
-    pub fn client_sign_keys(&self, idx : usize) -> Option<sign::PublicKey> {
+    pub fn private_key(&self) -> &box_::SecretKey { &self.private_key }
+    pub fn ha_public_key(&self) -> &box_::PublicKey { &self.ha_public_key }
+
+    pub fn client_sign_keys(&self, idx : usize) -> Option<&sign::PublicKey> {
         if let Some((_, sign)) = self.public_keys.get(&idx) {
-            Some(sign.clone())
-        }else{
+            Some(sign)
+        } else {
             None
         }
     }
-    pub fn client_public_keys(&self, idx : usize) -> Option<box_::PublicKey> {
+    pub fn client_public_keys(&self, idx : usize) -> Option<&box_::PublicKey> {
         if let Some((pkey, _)) = self.public_keys.get(&idx) {
-            Some(pkey.clone())
-        }else{
+            Some(pkey)
+        } else {
             None
         }
     }
-    pub fn ha_public_key(&self) -> box_::PublicKey { self.ha_public_key.clone() }
+    pub fn all_client_keys(&self, idx : usize) -> Option<(&box_::PublicKey, &sign::PublicKey)> {
+        if let Some((pkey, signkey)) = self.public_keys.get(&idx) {
+            Some((pkey, signkey))
+        } else {
+            None
+        }
+    }
 }
 
 pub fn save_keys(size : usize, keys_dir : String) -> Result<()> {

@@ -1,5 +1,6 @@
 
 use color_eyre::eyre::Result;
+use sodiumoxide::crypto::box_;
 
 use std::{convert::TryFrom, sync::Arc};
 
@@ -11,9 +12,9 @@ use protos::location_storage::location_storage_server::LocationStorage;
 use protos::location_storage::{SubmitLocationReportRequest, SubmitLocationReportResponse,
     ObtainLocationReportRequest, ObtainLocationReportResponse};
 
-use security::key_management::ServerKeys;
-use security::proof;
-use security::report;
+use security::{key_management::ServerKeys, report::Report};
+use security::proof::verify_proof;
+use security::report::decode_report;
 
 pub struct MyLocationStorage {
     storage : Arc<Timeline>,
@@ -53,22 +54,35 @@ impl MyLocationStorage {
         Ok((res_x.unwrap(), res_y.unwrap()))
     }
 
-    fn check_valid_location_report(&self, pos_x: usize, pos_y: usize, idxs : Vec<u64>, proofs: Vec<Vec<u8>>) -> bool {
-        let f_line : usize = 1;
+    fn parse_valid_nonce(&self, nonce : &[u8]) -> Result<box_::Nonce, Status> { // TODO: check if first nonce for user
+        match box_::Nonce::from_slice(nonce) {
+            Some(nonce) => Ok(nonce),
+            None => return Err(Status::invalid_argument("Not a valid nonce")),
+        }
+    }
+
+    fn check_valid_location_report(&self, req_idx : usize, report : &Report) -> bool {
+        if req_idx != report.idx() { return false; }
+
+        let (epoch, (pos_x, pos_y)) = (report.epoch(), report.loc());
+
+
+        let f_line : usize = 1; // TODO
+
         let ((lower_x, lower_y), (upper_x, upper_y)) = self.storage.valid_neighbour(pos_x, pos_y);
         let mut counter = 0;
-        for (&idx, proof) in idxs.iter().zip(proofs) {
-            if let Ok(idx) = self.parse_valid_idx(idx) {
-                println!("idx");
-                if let Some(sign_key) = self.server_keys.client_sign_keys(idx) {
-                    println!("sign key");
-                    if let Ok(proof) = proof::verify_proof(&sign_key, &proof) {
-                        println!("proof");
-                        let (x, y)  = proof.loc_req();
-                        if lower_x <= x && x <= upper_x && lower_y <= y && y <= upper_y {
-                            println!("validpos {:} {:}", x, y);
-                            counter += 1;
-                        }
+
+        for (idx, proof) in report.proofs() {
+            if let Some(sign_key) = self.server_keys.client_sign_keys(*idx) {
+                if let Ok(proof) = verify_proof(&sign_key, &proof) {
+                    let (x, y)  = proof.loc_ass();
+                    if lower_x <= x && x <= upper_x
+                        && lower_y <= y && y <= upper_y
+                        && epoch == proof.epoch()
+                        && req_idx == proof.idx_req()
+                        && *idx == proof.idx_ass() {
+                        println!("Valid proof");
+                        counter += 1;
                     }
                 }
             }
@@ -88,29 +102,41 @@ impl LocationStorage for MyLocationStorage {
     ) -> Result<Response<SubmitLocationReportResponse>, Status> {
         let request = request.get_ref();
         println!("Client {:} sending a location report", request.idx);
-        let (req_idx, epoch) =
-            match (self.parse_valid_idx(request.idx), self.parse_valid_epoch(request.epoch)) {
-                (Ok(idx), Ok(epoch)) => (idx, epoch),
-                (Err(err), _) | (_, Err(err)) => return Err(err),
+        let req_idx =
+            match self.parse_valid_idx(request.idx) {
+                Ok(idx) => idx,
+                Err(err) => return Err(err),
         };
 
-        let (pos_x, pos_y) =  match self.parse_valid_location(request.pos_x, request.pos_y) {
-            Ok(position) => position,
+        let (client_key, client_sign_key) = if let Some(ck) = self.server_keys.all_client_keys(req_idx) {
+            ck
+        } else {
+            return Err(Status::permission_denied(format!("Unable to find client {:} keys", req_idx)));
+        };
+
+        let nonce = match self.parse_valid_nonce(&request.nonce) {
+            Ok(nonce) => nonce,
             Err(err) => return Err(err),
         };
 
-        let (idxs, proofs) = if let Some(report) = request.report.clone() {
-            (report.idx_ass, report.proofs)
-        } else {
-            return Err(Status::invalid_argument("Doesn't include any proof!!"));
+        let report = match decode_report(
+            client_sign_key,
+            self.server_keys.private_key(),
+            client_key,
+            &request.report,
+            nonce
+        ) {
+            Ok(report) => report,
+            Err(_) => return  Err(Status::permission_denied("Unable to decrypt report"))
         };
+
         println!("Checking proofs");
-        if self.check_valid_location_report(pos_x, pos_y, idxs, proofs){
-            match self.storage.add_user_location_at_epoch(epoch, pos_x, pos_y, req_idx) {
+        if self.check_valid_location_report(req_idx, &report){
+            match self.storage.add_user_location_at_epoch(report.epoch(), report.loc(), req_idx) {
                 Ok(_) => Ok(Response::new(SubmitLocationReportResponse::default() )),
                 Err(_) => Err(Status::permission_denied("Permission denied!!")),
             }
-        }else{
+         } else {
             println!("Failed");
             Err(Status::permission_denied("Report not valid!!"))
         }

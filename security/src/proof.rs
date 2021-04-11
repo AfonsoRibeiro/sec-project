@@ -8,21 +8,23 @@ pub struct Proof {
     idx_req : usize,
     idx_ass : usize,
     epoch : usize,
-    loc_req : (usize,usize),
+    loc_ass : (usize,usize),
 }
 
 impl Proof {
-    pub fn new(epoch : usize, idx_req : usize, idx_ass : usize, loc_req : (usize, usize)) -> Proof {
+    pub fn new(epoch : usize, idx_req : usize, idx_ass : usize, loc_ass : (usize, usize)) -> Proof {
         Proof {
             idx_req,
             idx_ass,
             epoch,
-            loc_req,
+            loc_ass,
         }
     }
-    pub fn loc_req(&self) -> (usize, usize) {
-        self.loc_req
-    }
+
+    pub fn epoch(&self) -> usize { self.epoch }
+    pub fn idx_req(&self) -> usize { self.idx_req }
+    pub fn idx_ass(&self) -> usize { self.idx_ass }
+    pub fn loc_ass(&self) -> (usize, usize) { self.loc_ass }
 }
 
 pub fn sign_proof(oursk : &SecretKey, proof : Proof) -> Vec<u8>{

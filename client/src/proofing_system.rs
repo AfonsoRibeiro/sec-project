@@ -11,7 +11,7 @@ use futures::select;
 
 use tonic::{transport::Server, Request, Response, Status};
 
-use protos::location_proof::{self, location_proof_client::LocationProofClient};
+use protos::location_proof::location_proof_client::LocationProofClient;
 use protos::location_proof::location_proof_server::{LocationProof, LocationProofServer};
 
 use protos::location_proof::{RequestLocationProofRequest, RequestLocationProofResponse};
@@ -124,7 +124,7 @@ pub async fn request_location_proof(idx : usize, epoch : usize, id_dest : usize)
     }
 }
 
-pub async fn get_proofs(timeline : Arc<Timeline>, idx : usize, epoch : usize) -> (Vec<Vec<u8>>, Vec<u64>) {
+pub async fn get_proofs(timeline : Arc<Timeline>, idx : usize, epoch : usize) -> (Vec<Vec<u8>>, Vec<usize>) {
 
     let nec_proofs : usize = 2; // TODO 2*f' + 1
 
@@ -138,14 +138,16 @@ pub async fn get_proofs(timeline : Arc<Timeline>, idx : usize, epoch : usize) ->
     ).collect();
 
     let mut report : Vec<Vec<u8>> = Vec::with_capacity(nec_proofs);
-    let mut idx : Vec<u64> = Vec::with_capacity(nec_proofs);  // Number of proofs needed
+    let mut idx : Vec<usize> = Vec::with_capacity(nec_proofs);  // Number of proofs needed
 
     loop {
         select! {
             res = responses.select_next_some() => {
                 if let Ok((proof, idx_ass)) = res {
-                    report.push(proof);
-                    idx.push(idx_ass);
+                    if let Ok(x) = usize::try_from(idx_ass) {
+                        report.push(proof);
+                        idx.push(x);
+                    }
                 }
 
                 if report.len() >= nec_proofs {

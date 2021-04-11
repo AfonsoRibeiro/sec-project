@@ -76,7 +76,7 @@ impl Timeline {
         }
     }
 
-    pub fn add_user_location_at_epoch(&self, epoch: usize, pos_x : usize, pos_y : usize, idx: usize) -> Result<()>{ //TODO: check if it is valid -> report
+    pub fn add_user_location_at_epoch(&self, epoch: usize, (pos_x, pos_y) : (usize, usize), idx: usize) -> Result<()>{ //TODO: check if it is valid -> report
         if self.blacklist.contains(&idx) {
             return Err(eyre!("Malicious user detected!"));
         }
@@ -87,7 +87,7 @@ impl Timeline {
                 return Err(eyre!("Two positions submitted for the same epoch"));
             }
 
-        }else { //RwLock bc of insert
+        } else { //RwLock bc of insert
            let users_loc= DashMap::new();
            users_loc.insert(idx, (pos_x, pos_y));
            self.routes.insert(epoch, users_loc);
@@ -118,7 +118,7 @@ impl Timeline {
 
         if vec.len() > epoch && self.valid_pos(pos_x, pos_y){
             Some(vec[epoch].get_users_at_location(pos_x,pos_y))
-        }else {
+        } else {
             None
         }
     }
