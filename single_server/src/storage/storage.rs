@@ -6,6 +6,8 @@ use serde_derive::{Deserialize, Serialize};
 use eyre::{eyre, Context};
 use color_eyre::{eyre::Result, owo_colors::OwoColorize};
 
+use sodiumoxide::crypto::box_::Nonce;
+
 #[derive(Debug)]
 struct Report {
     loc : (usize, usize),
@@ -57,13 +59,14 @@ impl Grid {
     }
 }
 
-//epoch -> user id -> location
+
 #[derive(Debug)] 
 pub struct Timeline {
-    routes : DashMap<usize, DashMap<usize, (usize, usize)>>,
+    routes : DashMap<usize, DashMap<usize, ((usize, usize), Vec<u8>)>>, //epoch -> user id -> location
     timeline : RwLock<Vec<Grid>>,
-    size: usize,
-    blacklist: DashSet<usize>
+    size : usize,
+    blacklist : DashSet<usize>,
+    nonces : DashMap<usize, DashSet<Nonce>>
 }
 
 impl Timeline {
@@ -73,23 +76,24 @@ impl Timeline {
             timeline : RwLock::new(vec![]),
             size,
             blacklist : DashSet::new(),
+            nonces : DashMap::new(),
         }
     }
 
-    pub fn add_user_location_at_epoch(&self, epoch: usize, (pos_x, pos_y) : (usize, usize), idx: usize) -> Result<()>{ //TODO: check if it is valid -> report
+    pub fn add_user_location_at_epoch(&self, epoch: usize, (pos_x, pos_y) : (usize, usize), idx: usize, report : Vec<u8>) -> Result<()>{ //TODO: check if it is valid -> report
         if self.blacklist.contains(&idx) {
             return Err(eyre!("Malicious user detected!"));
         }
         if let Some(user_pos) =  self.routes.get_mut(&epoch) {
-            if let Some(_) = user_pos.insert(idx,(pos_x, pos_y)) {
+            if let Some(_) = user_pos.insert(idx,((pos_x, pos_y), report)) {
                 user_pos.remove(&idx);
                 self.blacklist.insert(idx);
                 return Err(eyre!("Two positions submitted for the same epoch"));
             }
 
-        } else { //RwLock bc of insert
+        } else { //RwLock bc of insert (before if else)
            let users_loc= DashMap::new();
-           users_loc.insert(idx, (pos_x, pos_y));
+           users_loc.insert(idx, ((pos_x, pos_y), report));
            self.routes.insert(epoch, users_loc);
         }
         let mut vec = self.timeline.write().unwrap(); // Fix this : dont assume this
@@ -126,11 +130,22 @@ impl Timeline {
     pub fn get_user_location_at_epoch(&self, epoch: usize, idx: usize) -> Option<(usize, usize)> {
         if let Some(user_loc ) = self.routes.get(&epoch) {
             if let Some(position) = user_loc.get(&idx){
-                let (x, y) = position.value();
+                let ((x,y), _) = position.value();
                 return Some((*x,*y));
             }
         }
         None
+    }
+
+    pub fn check_nonce(&self, idx : usize, nonce : Nonce) -> bool {
+        if let Some(user_nonces) = self.nonces.get_mut(&idx) {
+            user_nonces.insert(nonce)
+        } else { //RwLock bc of insert (before if else)
+           let user_nonce= DashSet::new();
+           user_nonce.insert(nonce);
+           self.nonces.insert(idx, user_nonce);
+           true
+        }
     }
 }
 

@@ -45,18 +45,15 @@ impl MyLocationStorage {
         Ok(res_epoch.unwrap())
     }
 
-    fn parse_valid_location(&self, x : u64, y : u64) -> Result<(usize, usize), Status> {
-        let res_x = usize::try_from(x);
-        let res_y = usize::try_from(y);
-        if res_x.is_err() || res_y.is_err() || !self.storage.valid_pos(res_x.unwrap(), res_y.unwrap()) {
-            return Err(Status::invalid_argument(format!("Not a valid x or y: ({:}, {:}).", x, y)));
-        }
-        Ok((res_x.unwrap(), res_y.unwrap()))
-    }
-
-    fn parse_valid_nonce(&self, nonce : &[u8]) -> Result<box_::Nonce, Status> { // TODO: check if first nonce for user
+    fn parse_valid_nonce(&self, idx : usize, nonce : &[u8]) -> Result<box_::Nonce, Status> { // TODO: check if first nonce for user
         match box_::Nonce::from_slice(nonce) {
-            Some(nonce) => Ok(nonce),
+            Some(nonce) => {
+                if self.storage.check_nonce(idx, nonce) {
+                    Ok(nonce)
+                } else {
+                    Err(Status::already_exists("nonce already exists"))
+                }
+            }
             None => return Err(Status::invalid_argument("Not a valid nonce")),
         }
     }
@@ -114,7 +111,7 @@ impl LocationStorage for MyLocationStorage {
             return Err(Status::permission_denied(format!("Unable to find client {:} keys", req_idx)));
         };
 
-        let nonce = match self.parse_valid_nonce(&request.nonce) {
+        let nonce = match self.parse_valid_nonce(req_idx, &request.nonce) {
             Ok(nonce) => nonce,
             Err(err) => return Err(err),
         };
@@ -130,9 +127,10 @@ impl LocationStorage for MyLocationStorage {
             Err(_) => return  Err(Status::permission_denied("Unable to decrypt report"))
         };
 
+
         println!("Checking proofs");
-        if self.check_valid_location_report(req_idx, &report){
-            match self.storage.add_user_location_at_epoch(report.epoch(), report.loc(), req_idx) {
+        if self.check_valid_location_report(req_idx, &report) {
+            match self.storage.add_user_location_at_epoch(report.epoch(), report.loc(), req_idx, request.report.clone()) {
                 Ok(_) => Ok(Response::new(SubmitLocationReportResponse::default() )),
                 Err(_) => Err(Status::permission_denied("Permission denied!!")),
             }
