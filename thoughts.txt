@@ -2,12 +2,10 @@ what happens when client cant get 2*f' + 1 proofs?
 
 users have no encryption, shoud the requester just put the id alongside the proof in report or does it need to be the proofer sending its id so the requester knows it
 
-Proof as location of proffer?? loc_ass
-
 TODO:
  - Cryptography
 
- - do error response need to be encrypted
+ - Cominication encrypted ha_client - server and client - server
 
  - server needs to store the state -> 2 Files
 
@@ -17,3 +15,5 @@ TODO:
 
  - What should a byzantine user try?
 
+
+ - f_max = f' * (size*size - 2*size - 2*(size-2))   | n of squares not on the edge

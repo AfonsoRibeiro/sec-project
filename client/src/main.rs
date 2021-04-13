@@ -36,9 +36,6 @@ struct Opt {
 
     #[structopt(name = "keys", long, default_value = "security/keys")]
     keys_dir : String,
-
-    #[structopt(name = "fline", long, default_value = "3")]
-    f_line : usize,
 }
 
 #[tokio::main]
@@ -63,7 +60,7 @@ async fn main() -> Result<()> {
     let proofer =
         tokio::spawn(proofing_system::start_proofer(opt.idx, timeline.clone(), client_keys.sign_key()));
 
-    tokio::spawn(epochs_generator(timeline.clone(), opt.idx, opt.server_url.clone(), client_keys, server_keys, opt.f_line));
+    tokio::spawn(epochs_generator(timeline.clone(), opt.idx, opt.server_url.clone(), client_keys, server_keys));
 
     read_commands(timeline.clone(), opt.idx, opt.server_url).await;
 
@@ -78,11 +75,10 @@ async fn reports_generator(
     epoch : usize,
     server_url : Uri,
     client_keys : Arc<ClientKeys>,
-    server_key : Arc<ServerPublicKey>,
-    f_line : usize ) {
+    server_key : Arc<ServerPublicKey>, ) {
 
     if let Some((loc_x, loc_y)) = timeline.get_location_at_epoch(idx, epoch) {
-        let (proofs, idxs_ass) = proofing_system::get_proofs(timeline, idx, epoch, f_line).await;
+        let (proofs, idxs_ass) = proofing_system::get_proofs(timeline, idx, epoch).await;
         if proofs.len() > 0 && proofs.len() == idxs_ass.len() {
             let report = Report::new(epoch, (loc_x, loc_y), idx, idxs_ass, proofs);
             while reports::submit_location_report(
@@ -109,7 +105,6 @@ async fn epochs_generator(
     server_url : Uri,
     client_keys : ClientKeys,
     server_keys : ServerPublicKey,
-    f_line : usize,
 ) -> Result<()> {
 
     let client_keys = Arc::new(client_keys);
@@ -123,7 +118,7 @@ async fn epochs_generator(
 
         println!("Client {:} entered epoch {:}/{:}.", idx, epoch, timeline.epochs()-1);
 
-        tokio::spawn(reports_generator(timeline.clone(), idx, epoch, server_url.clone(), client_keys.clone(), server_keys.clone(), f_line));
+        tokio::spawn(reports_generator(timeline.clone(), idx, epoch, server_url.clone(), client_keys.clone(), server_keys.clone()));
     }
     Ok(())
 }

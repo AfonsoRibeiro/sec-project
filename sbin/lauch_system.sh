@@ -19,13 +19,17 @@ dir="debug"
 # echo
 # ./target/$dir/grid -s $grid_size -p $n_points -e $epochs -f $grid_file
 
+# retrieves f_line from grid
+f_line=$(cat grid/grid.txt | grep -o -E 'f_line\":[0-9]+')
+IFS=: read -r trash f_line <<< "$f_line"
+
 echo "Generating keys"
 echo
 ./target/$dir/security --clients $n_points --keys $keys_dir
 
 echo "Starting Server"
 echo
-gnome-terminal -- ./target/$dir/single_server --server $server_addr --size $grid_size --keys $keys_dir --fline $f_line
+gnome-terminal -- ./target/$dir/single_server --server $server_addr --size $grid_size --keys $keys_dir
 
 
 echo "Starting Clients"

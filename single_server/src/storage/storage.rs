@@ -82,10 +82,12 @@ impl Timeline {
                     user_pos.write().unwrap().remove(&idx);
                     self.blacklist.write().unwrap().insert(idx);
                     return Err(eyre!("Two positions submitted for the same epoch"));
+                } else {
+                    return Ok(()); //client resubmited report, no problem
                 }
             }
 
-        } else { //RwLock bc of insert (before if else)
+        } else {
            let users_loc = RwLock::new(HashMap::new());
            users_loc.write().unwrap().insert(idx, report);
            routes.insert(epoch, users_loc);

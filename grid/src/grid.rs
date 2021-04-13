@@ -1,5 +1,5 @@
 use rand::Rng;
-use std::fs::File;
+use std::{cmp::min, fs::File};
 use std::io::{BufReader, BufWriter};
 use std::collections::{HashSet, HashMap};
 use color_eyre::eyre::{Context, Result};
@@ -60,6 +60,33 @@ impl Grid {
         x + self.size * y
     }
 
+    fn min_neighbours(&self) -> usize {
+        let mut min_n = usize::MAX;
+
+        for i in 0..self.size {
+            for j in 0..self.size {
+                let lower_x = if i == 0 {i} else {i-1};
+                let lower_y = if j == 0 {j} else {j-1};
+                let upper_x = if i+1 == self.size {i} else {i+1};
+                let upper_y = if j+1 == self.size {j} else {j+1};
+
+                let mut n = 0_usize;
+
+                for x in lower_x..=upper_x {
+                    for y in lower_y..=upper_y {
+                        n += self.grid[self.get_index(x, y)].len();
+                    }
+                }
+
+                n -= 1;
+
+                min_n = min(min_n, n);
+            }
+        }
+
+        min_n
+    }
+
     // fn find_point(&self, point : usize) -> Option<(usize, usize)> {
     //     for (index, pos) in self.grid.iter().enumerate() {
     //         if pos.contains(&point) {
@@ -80,6 +107,8 @@ pub struct Timeline {
     epochs : usize,
 
     size : usize,
+
+    pub f_line : usize,
 }
 
 impl Timeline {
@@ -89,6 +118,7 @@ impl Timeline {
             routes : HashMap::new(),
             epochs : 0,
             size,
+            f_line : usize::MAX,
         }
     }
 
@@ -101,6 +131,8 @@ impl Timeline {
                 }
             )
         );
+
+        self.f_line = min(self.f_line, (new_grid.min_neighbours()-1) / 2);
         self.timeline.push(new_grid);
 
         self.epochs += 1;
