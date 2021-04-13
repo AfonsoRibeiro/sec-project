@@ -129,11 +129,11 @@ impl LocationStorage for MyLocationStorage {
                 Ok(_) => {
                     if let Ok(_) = save_storage(self.storage.filename(), &self.storage).await {
                         let nonce = secretbox::gen_nonce();
-                        Ok(Response::new(SubmitLocationReportResponse {
+                        Ok( Response::new(SubmitLocationReportResponse {
                             nonce : nonce.0.to_vec(),
                             ok : secretbox::seal(b"", &nonce, info.key()),
-                        } ))
-                    }else {
+                        }))
+                    } else {
                         Err(Status::aborted("Unable to permanently save information."))
                     }
                 }

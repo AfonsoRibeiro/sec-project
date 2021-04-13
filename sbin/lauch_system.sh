@@ -15,9 +15,9 @@ server_url="http://[::1]:50051"
 dir="debug"
 #dir="release"
 
-# echo "Generating grid"
-# echo
-# ./target/$dir/grid -s $grid_size -p $n_points -e $epochs -f $grid_file
+echo "Generating grid"
+echo
+./target/$dir/grid -s $grid_size -p $n_points -e $epochs -f $grid_file
 
 # retrieves f_line from grid
 f_line=$(cat grid/grid.txt | grep -o -E 'f_line\":[0-9]+')
@@ -29,14 +29,15 @@ echo
 
 echo "Starting Server"
 echo
-gnome-terminal -- ./target/$dir/single_server --server $server_addr --size $grid_size --keys $keys_dir
+rm single_server/storage.txt
+gnome-terminal -- ./target/$dir/single_server --server $server_addr --size $grid_size --keys $keys_dir --fline $f_line
 
 
 echo "Starting Clients"
 echo
 for ((idx=0;idx<n_points;idx++))
 do
-    gnome-terminal -- ./target/$dir/client --server $server_url --id $idx --grid $grid_file --keys $keys_dir --fline $f_line < sbin/noop.txt
+    gnome-terminal -- ./target/$dir/client --server $server_url --id $idx --grid $grid_file --keys $keys_dir < sbin/noop.txt
 done
 
 echo "Starting ha_client"

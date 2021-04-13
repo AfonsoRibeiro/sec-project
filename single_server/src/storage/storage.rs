@@ -74,23 +74,25 @@ impl Timeline {
         if self.blacklist.read().unwrap().contains(&idx) {
             return Err(eyre!("Malicious user detected!"));
         }
-        let mut routes = self.routes.write().unwrap();
-        let report = Report::new((pos_x, pos_y), report);
-        if let Some(user_pos) =  routes.get_mut(&epoch) {
-            if let Some(report) = user_pos.write().unwrap().insert(idx,report) {
-                if report.loc != (pos_x, pos_y) {
-                    user_pos.write().unwrap().remove(&idx);
-                    self.blacklist.write().unwrap().insert(idx);
-                    return Err(eyre!("Two positions submitted for the same epoch"));
-                } else {
-                    return Ok(()); //client resubmited report, no problem
+        {
+            let mut routes = self.routes.write().unwrap();
+            let report = Report::new((pos_x, pos_y), report);
+            if let Some(user_pos) =  routes.get(&epoch) {
+                if let Some(report) = user_pos.write().unwrap().insert(idx,report) {
+                    if report.loc != (pos_x, pos_y) {
+                        user_pos.write().unwrap().remove(&idx);
+                        self.blacklist.write().unwrap().insert(idx);
+                        return Err(eyre!("Two positions submitted for the same epoch"));
+                    } else {
+                        return Ok(()); //client resubmited report, no problem
+                    }
                 }
-            }
 
-        } else {
-           let users_loc = RwLock::new(HashMap::new());
-           users_loc.write().unwrap().insert(idx, report);
-           routes.insert(epoch, users_loc);
+            } else {
+                let mut users_loc = HashMap::new();
+                users_loc.insert(idx, report);
+                routes.insert(epoch, RwLock::new(users_loc));
+            }
         }
         {
             let mut vec = self.timeline.write().unwrap(); // Fix this : dont assume this
