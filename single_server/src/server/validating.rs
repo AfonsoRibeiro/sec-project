@@ -128,7 +128,11 @@ impl LocationStorage for MyLocationStorage {
             match self.storage.add_user_location_at_epoch(report.epoch(), report.loc(), info.idx(), request.report.clone()) {
                 Ok(_) => {
                     if let Ok(_) = save_storage(self.storage.filename(), &self.storage).await {
-                        Ok(Response::new(SubmitLocationReportResponse::default() ))
+                        let nonce = secretbox::gen_nonce();
+                        Ok(Response::new(SubmitLocationReportResponse {
+                            nonce : nonce.0.to_vec(),
+                            ok : secretbox::seal(b"", &nonce, info.key()),
+                        } ))
                     }else {
                         Err(Status::aborted("Unable to permanently save information."))
                     }

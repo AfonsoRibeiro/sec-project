@@ -7,9 +7,9 @@ Proof as location of proffer?? loc_ass
 TODO:
  - Cryptography
 
- - server needs to store the state -> 2 Files
-
  - do error response need to be encrypted
+
+ - server needs to store the state -> 2 Files
 
  - Can f_line just be a random number | Calculate this property
 
@@ -17,4 +17,3 @@ TODO:
 
  - What should a byzantine user try?
 
- - Nonces added before confirming that idx did infact send that msg

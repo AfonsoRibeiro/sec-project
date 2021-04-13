@@ -9,17 +9,17 @@ use structopt::StructOpt;
 use regex::Regex;
 
 
-use tokio::time::{interval_at, Duration, Instant};
+use tokio::time::{interval_at, Duration, Instant, sleep};
 use tokio::io::{self, AsyncBufReadExt, BufReader};
 use tonic::transport::Uri;
 
 use grid::grid::{Timeline, retrieve_timeline};
-use security::key_management::{
+use security::{key_management::{
     ClientKeys,
     ServerPublicKey,
     retrieve_client_keys,
     retrieve_server_public_keys,
-};
+}, report::Report};
 
 #[derive(StructOpt)]
 #[structopt(name = "Client", about = "Reporting and verifying locations since 99.")]
@@ -84,20 +84,20 @@ async fn reports_generator(
     if let Some((loc_x, loc_y)) = timeline.get_location_at_epoch(idx, epoch) {
         let (proofs, idxs_ass) = proofing_system::get_proofs(timeline, idx, epoch, f_line).await;
         if proofs.len() > 0 && proofs.len() == idxs_ass.len() {
-            let _r = reports::submit_location_report(
+            let report = Report::new(epoch, (loc_x, loc_y), idx, idxs_ass, proofs);
+            while reports::submit_location_report(
                 idx,
-                epoch,
-                (loc_x, loc_y),
-                server_url,
-                proofs,
-                idxs_ass,
+                &report,
+                server_url.clone(),
                 client_keys.sign_key(),
-                server_key.public_key()
-            ).await;  // TODO FIX If failed should we try and resubmit
-
-            } else {
-                println!("Client {:} unable to generate report for epoch {:}.", idx, epoch);
+                server_key.public_key(),
+            ).await.is_err() {
+                sleep(Duration::from_millis(500)).await; // allow time for server recovery
             }
+
+        } else {
+            println!("Client {:} unable to generate report for epoch {:}.", idx, epoch);
+        }
     } else {
         print!("Error: reports_generator! (Should never happen)");
     }

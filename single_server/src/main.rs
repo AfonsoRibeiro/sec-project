@@ -1,8 +1,10 @@
 mod server;
 mod storage;
 
-use structopt::StructOpt;
+use eyre::eyre;
 use color_eyre::eyre::Result;
+use structopt::StructOpt;
+
 use std::sync::Arc;
 
 use security::key_management::retrieve_server_keys;
@@ -34,6 +36,10 @@ async fn main() -> Result<()> {
     println!("Server starting");
 
     let opt = Opt::from_args();
+
+    if sodiumoxide::init().is_err() {
+        return Err(eyre!("Unable to make sodiumoxide thread safe"));
+    }
 
     let storage = if let Ok(storage) = storage::retrieve_storage(&opt.storage_file) {
         Arc::new(storage)

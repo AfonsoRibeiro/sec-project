@@ -13,23 +13,18 @@ use protos::location_storage::location_storage_client::LocationStorageClient;
 use sodiumoxide::crypto::sign;
 use sodiumoxide::crypto::box_;
 
-use security::report::{self, Report};
+use security::report::{self, Report, success_report};
 
 
 pub async fn submit_location_report(
     idx : usize,
-    epoch : usize,
-    loc : (usize, usize),
+    report : &Report,
     url : Uri,
-    proofs_joined: Vec<Vec<u8>>,
-    idxs_ass : Vec<usize>,
     sign_key : sign::SecretKey,
     server_key : box_::PublicKey,
 ) -> Result<()> {
 
-    let report = Report::new(epoch, loc, idx, idxs_ass, proofs_joined);
-
-    let (report_info, report, nonce) = report::encode_report(&sign_key, &server_key, report, idx);
+    let (report_info, report, key) = report::encode_report(&sign_key, &server_key, report, idx);
 
     let mut client = LocationStorageClient::connect(url).await?;
 
@@ -39,7 +34,14 @@ pub async fn submit_location_report(
     });
 
     match client.submit_location_report(request).await {
-        Ok(_) => Ok(()),
+        Ok(response) => {
+            let response = response.get_ref();
+            if success_report(&key, &response.nonce, &response.ok) {
+                Ok(())
+            } else {
+                Err(eyre!("submit_location_report unable to validate server response "))
+            }
+        }
         Err(status) => Err(eyre!("SubmitLocationReport failed with code {:?} and message {:?}.",
                             status.code(), status.message())),
     }

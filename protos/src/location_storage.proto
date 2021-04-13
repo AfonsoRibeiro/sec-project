@@ -22,7 +22,10 @@ message SubmitLocationReportRequest { //report is encrypted with idx
     bytes report_info = 2;
 }
 
-message SubmitLocationReportResponse {}
+message SubmitLocationReportResponse {
+    bytes nonce = 1;
+    bytes ok = 2;
+}
 
 message ObtainLocationReportRequest {
     uint64 idx = 1;

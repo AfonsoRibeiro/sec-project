@@ -56,11 +56,11 @@ impl ReportInfo {
 pub fn encode_report(
     signsk : &sign::SecretKey,
     theirpk : &box_::PublicKey,
-    report : Report,
+    report : &Report,
     idx : usize
-) -> (Vec<u8>, Vec<u8>, secretbox::Nonce) {
+) -> (Vec<u8>, Vec<u8>, secretbox::Key) {
 
-    let plaintext = serde_json::to_vec(&report).unwrap();
+    let plaintext = serde_json::to_vec(report).unwrap();
     let signtext = sign::sign(&plaintext, signsk);
 
     let key = secretbox::gen_key();
@@ -68,10 +68,10 @@ pub fn encode_report(
 
     let enc_report = secretbox::seal(&signtext,&box_nonce, &key);
 
-    let info = ReportInfo::new(idx, key, box_nonce);
+    let info = ReportInfo::new(idx, key.clone(), box_nonce);
     let textinfo = serde_json::to_vec(&info).unwrap();
 
-    (sealedbox::seal(&textinfo, theirpk), enc_report, box_nonce)
+    (sealedbox::seal(&textinfo, theirpk), enc_report, key)
 }
 
 pub fn decode_info(
@@ -90,7 +90,7 @@ pub fn decode_report(
     signpk : &sign::PublicKey,
     sim_key : &secretbox::Key,
     cipherreport : &Vec<u8>,
-    nonce : &secretbox::Nonce
+    nonce : &secretbox::Nonce,
 ) -> Result<Report> {
 
     let decoded_report = secretbox::open(cipherreport, nonce, sim_key).unwrap(); //TODO: fix unwrap
@@ -100,4 +100,16 @@ pub fn decode_report(
     let report = serde_json::from_slice(&report)?;
 
     Ok(report)
+}
+
+pub fn success_report(
+    key : &secretbox::Key,
+    nonce :&Vec<u8>,
+    cyphertext : &Vec<u8>,
+) -> bool {
+    if let Some(nonce) = secretbox::Nonce::from_slice(nonce) {
+        secretbox::open(cyphertext, &nonce, key).is_ok()
+    } else {
+        false
+    }
 }
