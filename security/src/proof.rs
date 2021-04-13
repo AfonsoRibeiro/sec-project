@@ -36,11 +36,9 @@ pub fn sign_proof(oursk : &SecretKey, proof : Proof) -> Vec<u8>{
 
 pub fn verify_proof(theirpk : &PublicKey, ciphertest : &Vec<u8>) -> Result<Proof> {
 
-    let decoded_proof = sign::verify(ciphertest, theirpk);
-    if decoded_proof.is_err() {
-        return  Err(eyre!("Failed to verify proof"));
-    }
-    let proof = serde_json::from_slice(&decoded_proof.unwrap()).wrap_err_with(|| format!("Failed to parse proof"))?;
+    let decoded_proof = sign::verify(ciphertest, theirpk).expect("Failed to verify proof");
+
+    let proof = serde_json::from_slice(&decoded_proof).wrap_err_with(|| format!("Failed to parse proof"))?;
 
     Ok(proof)
 }

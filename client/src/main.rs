@@ -53,9 +53,7 @@ async fn main() -> Result<()> {
         return Err(eyre!("Error : Invalid id for client {:}.", opt.idx));
     }
 
-    if sodiumoxide::init().is_err() {
-        return Err(eyre!("Unable to make sodiumoxide thread safe"));
-    }
+    sodiumoxide::init().expect("Unable to make sodiumoxide thread safe");
 
     let proofer =
         tokio::spawn(proofing_system::start_proofer(opt.idx, timeline.clone(), client_keys.sign_key()));
@@ -88,6 +86,7 @@ async fn reports_generator(
                 client_keys.sign_key(),
                 server_key.public_key(),
             ).await.is_err() {
+                println!("Unhable to submit report");
                 sleep(Duration::from_millis(500)).await; // allow time for server recovery
             }
 

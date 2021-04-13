@@ -37,9 +37,7 @@ async fn main() -> Result<()> {
 
     let opt = Opt::from_args();
 
-    if sodiumoxide::init().is_err() {
-        return Err(eyre!("Unable to make sodiumoxide thread safe"));
-    }
+    sodiumoxide::init().expect("Unable to make sodiumoxide thread safe");
 
     let storage = if let Ok(storage) = storage::retrieve_storage(&opt.storage_file) {
         Arc::new(storage)

@@ -67,7 +67,6 @@ impl MyLocationStorage {
                         && epoch == proof.epoch()
                         && req_idx == proof.idx_req()
                         && *idx == proof.idx_ass() {
-                        println!("Valid proof");
                         counter += 1;
                     }
                 }
