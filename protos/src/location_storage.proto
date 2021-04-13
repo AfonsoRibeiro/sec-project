@@ -19,8 +19,7 @@ service LocationStorage {
 
 message SubmitLocationReportRequest { //report is encrypted with idx
     bytes report = 1;
-    uint64 idx = 2;
-    bytes nonce = 3;
+    bytes report_info = 2;
 }
 
 message SubmitLocationReportResponse {}

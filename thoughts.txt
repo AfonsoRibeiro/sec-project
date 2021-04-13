@@ -2,19 +2,19 @@ what happens when client cant get 2*f' + 1 proofs?
 
 users have no encryption, shoud the requester just put the id alongside the proof in report or does it need to be the proofer sending its id so the requester knows it
 
-Proof as location of proffer??
+Proof as location of proffer?? loc_ass
 
 TODO:
  - Cryptography
 
- - (K_ser K_req K_ass) Proof = {id_ass + {id_req + epoch, KPriv_ass}, KPub_ser}
+ - server needs to store the state -> 2 Files
 
- - Fix interval_at, starting all from same time //aprox should be enough
+ - do error response need to be encrypted
 
- - server needs to store the state, is a single file enough?
+ - Can f_line just be a random number | Calculate this property
 
- - do error response need to be encrypted?
+ - client comunitcation need integrity | not sure yet
 
- - Save nonces and reports
+ - What should a byzantine user try?
 
- - Can f_line just be a random number?
+ - Nonces added before confirming that idx did infact send that msg

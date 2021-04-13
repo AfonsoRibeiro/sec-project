@@ -92,7 +92,6 @@ async fn reports_generator(
                 proofs,
                 idxs_ass,
                 client_keys.sign_key(),
-                client_keys.private_key(),
                 server_key.public_key()
             ).await;  // TODO FIX If failed should we try and resubmit
 

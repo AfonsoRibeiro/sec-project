@@ -5,7 +5,7 @@ use std::sync::RwLock;
 use serde_derive::{Deserialize, Serialize};
 use eyre::{eyre, Context};
 use color_eyre::eyre::Result;
-use sodiumoxide::crypto::box_::Nonce;
+use sodiumoxide::crypto::secretbox::Nonce;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Report {
@@ -133,7 +133,16 @@ impl Timeline {
         None
     }
 
-    pub fn check_nonce(&self, idx : usize, nonce : Nonce) -> bool {
+    pub fn valid_nonce(&self, idx : usize, nonce : &Nonce) -> bool {
+        let nonces = self.nonces.read().unwrap();
+        if let Some(user_nonces) = nonces.get(&idx) {
+            !user_nonces.contains(&nonce)
+        } else {
+            true
+        }
+    }
+
+    pub fn add_nonce(&self, idx : usize, nonce : Nonce) -> bool {
         let mut nonces = self.nonces.write().unwrap();
         if let Some(user_nonces) = nonces.get_mut(&idx){
             user_nonces.insert(nonce)
@@ -145,9 +154,7 @@ impl Timeline {
         }
     }
 
-    pub fn filename(&self) -> &str {
-        &self.filename
-    }
+    pub fn filename(&self) -> &str { &self.filename }
 }
 
 pub async fn save_storage(filename : &str, timeline : &Timeline) -> Result<()> { //TODO: make it async, depends on how the database is updated

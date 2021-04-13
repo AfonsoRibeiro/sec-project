@@ -1,6 +1,5 @@
 
 use color_eyre::eyre::Result;
-use sodiumoxide::crypto::box_;
 
 use std::{convert::TryFrom, sync::Arc};
 
@@ -14,7 +13,11 @@ use protos::location_storage::{SubmitLocationReportRequest, SubmitLocationReport
 
 use security::{key_management::ServerKeys, report::Report};
 use security::proof::verify_proof;
-use security::report::decode_report;
+use security::report::{decode_info, decode_report};
+
+
+use sodiumoxide::crypto::box_;
+use sodiumoxide::crypto::secretbox;
 
 pub struct MyLocationStorage {
     storage : Arc<Timeline>,
@@ -47,19 +50,6 @@ impl MyLocationStorage {
         Ok(res_epoch.unwrap())
     }
 
-    fn parse_valid_nonce(&self, idx : usize, nonce : &[u8]) -> Result<box_::Nonce, Status> { // TODO: check if first nonce for user
-        match box_::Nonce::from_slice(nonce) {
-            Some(nonce) => {
-                if self.storage.check_nonce(idx, nonce) {
-                    Ok(nonce)
-                } else {
-                    Err(Status::already_exists("nonce already exists"))
-                }
-            }
-            None => return Err(Status::invalid_argument("Not a valid nonce")),
-        }
-    }
-
     fn check_valid_location_report(&self, req_idx : usize, report : &Report) -> bool {
         if req_idx != report.idx() { return false; }
 
@@ -69,7 +59,7 @@ impl MyLocationStorage {
         let mut counter = 0;
 
         for (idx, proof) in report.proofs() {
-            if let Some(sign_key) = self.server_keys.client_sign_keys(*idx) {
+            if let Some(sign_key) = self.server_keys.client_sign_key(*idx) {
                 if let Ok(proof) = verify_proof(&sign_key, &proof) {
                     let (x, y)  = proof.loc_ass();
                     if lower_x <= x && x <= upper_x
@@ -97,39 +87,45 @@ impl LocationStorage for MyLocationStorage {
         request: Request<SubmitLocationReportRequest>,
     ) -> Result<Response<SubmitLocationReportResponse>, Status> {
         let request = request.get_ref();
-        println!("Client {:} sending a location report", request.idx);
-        let req_idx =
-            match self.parse_valid_idx(request.idx) {
-                Ok(idx) => idx,
-                Err(err) => return Err(err),
+
+        let info = if let Ok(info) = decode_info(
+            self.server_keys.private_key(),
+            self.server_keys.public_key(),
+            &request.report_info) {
+            info
+        } else {
+            return Err(Status::permission_denied("Unhable to decrept sealed container"));
         };
 
-        let (client_key, client_sign_key) = if let Some(ck) = self.server_keys.all_client_keys(req_idx) {
+        let client_sign_key = if let Some(ck) = self.server_keys.client_sign_key(info.idx()) {
             ck
         } else {
-            return Err(Status::permission_denied(format!("Unable to find client {:} keys", req_idx)));
+            return Err(Status::permission_denied(format!("Unable to find client {:} keys", info.idx())));
         };
 
-        let nonce = match self.parse_valid_nonce(req_idx, &request.nonce) {
-            Ok(nonce) => nonce,
-            Err(err) => return Err(err),
-        };
+        if !self.storage.valid_nonce(info.idx(), info.nonce()) {
+            return Err(Status::already_exists("nonce already exists"));
+        }
 
         let report = match decode_report(
             client_sign_key,
-            self.server_keys.private_key(),
-            client_key,
+            info.key(),
             &request.report,
-            nonce
+            &info.nonce(),
         ) {
-            Ok(report) => report,
+            Ok(report) => {
+                if !self.storage.add_nonce(info.idx(), info.nonce().clone()) {
+                    return  Err(Status::permission_denied("nonce already exists"));
+                }
+                report
+            }
             Err(_) => return  Err(Status::permission_denied("Unable to decrypt report"))
         };
 
 
         println!("Checking proofs");
-        if self.check_valid_location_report(req_idx, &report) {
-            match self.storage.add_user_location_at_epoch(report.epoch(), report.loc(), req_idx, request.report.clone()) {
+        if self.check_valid_location_report(info.idx(), &report) {
+            match self.storage.add_user_location_at_epoch(report.epoch(), report.loc(), info.idx(), request.report.clone()) {
                 Ok(_) => {
                     if let Ok(_) = save_storage(self.storage.filename(), &self.storage).await {
                         Ok(Response::new(SubmitLocationReportResponse::default() ))

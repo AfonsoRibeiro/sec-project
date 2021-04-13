@@ -24,20 +24,18 @@ pub async fn submit_location_report(
     proofs_joined: Vec<Vec<u8>>,
     idxs_ass : Vec<usize>,
     sign_key : sign::SecretKey,
-    private_key : box_::SecretKey,
     server_key : box_::PublicKey,
 ) -> Result<()> {
 
     let report = Report::new(epoch, loc, idx, idxs_ass, proofs_joined);
 
-    let (report, nonce) = report::encode_report(&sign_key, &private_key, &server_key, report);
+    let (report_info, report, nonce) = report::encode_report(&sign_key, &server_key, report, idx);
 
     let mut client = LocationStorageClient::connect(url).await?;
 
     let request = tonic::Request::new(SubmitLocationReportRequest {
-        idx : idx as u64,
-        nonce : nonce.0.to_vec(),
         report,
+        report_info,
     });
 
     match client.submit_location_report(request).await {

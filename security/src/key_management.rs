@@ -13,19 +13,16 @@ use sodiumoxide::crypto::sign;
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ClientKeys {
     sign_key : sign::SecretKey,
-    private_key : box_::SecretKey,
 }
 
 impl ClientKeys {
-    fn new(sign_key : sign::SecretKey, private_key : box_::SecretKey,) -> ClientKeys {
+    fn new(sign_key : sign::SecretKey) -> ClientKeys {
         ClientKeys {
             sign_key,
-            private_key,
         }
     }
 
     pub fn sign_key(&self) -> sign::SecretKey { self.sign_key.clone() }
-    pub fn private_key(&self) -> box_::SecretKey { self.private_key.clone() }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -60,39 +57,33 @@ impl ServerPublicKey {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ServerKeys {
     private_key : box_::SecretKey,
-    public_keys : HashMap<usize, (box_::PublicKey, sign::PublicKey)>,
+    public_key : box_::PublicKey,
+    sign_keys : HashMap<usize, sign::PublicKey>,
     ha_public_key : box_::PublicKey,
 }
 
 impl ServerKeys{
-    fn new(public_keys : HashMap<usize, (box_::PublicKey, sign::PublicKey)>, private_key : box_::SecretKey, ha_key : box_::PublicKey) -> ServerKeys {
+    fn new(
+        sign_keys : HashMap<usize, sign::PublicKey>,
+        private_key : box_::SecretKey,
+        public_key : box_::PublicKey,
+        ha_key : box_::PublicKey
+    ) -> ServerKeys {
         ServerKeys {
             private_key,
-            public_keys,
+            public_key,
+            sign_keys,
             ha_public_key : ha_key,
         }
     }
 
     pub fn private_key(&self) -> &box_::SecretKey { &self.private_key }
+    pub fn public_key(&self) -> &box_::PublicKey { &self.public_key }
     pub fn ha_public_key(&self) -> &box_::PublicKey { &self.ha_public_key }
 
-    pub fn client_sign_keys(&self, idx : usize) -> Option<&sign::PublicKey> {
-        if let Some((_, sign)) = self.public_keys.get(&idx) {
+    pub fn client_sign_key(&self, idx : usize) -> Option<&sign::PublicKey> {
+        if let Some(sign) = self.sign_keys.get(&idx) {
             Some(sign)
-        } else {
-            None
-        }
-    }
-    pub fn client_public_keys(&self, idx : usize) -> Option<&box_::PublicKey> {
-        if let Some((pkey, _)) = self.public_keys.get(&idx) {
-            Some(pkey)
-        } else {
-            None
-        }
-    }
-    pub fn all_client_keys(&self, idx : usize) -> Option<(&box_::PublicKey, &sign::PublicKey)> {
-        if let Some((pkey, signkey)) = self.public_keys.get(&idx) {
-            Some((pkey, signkey))
         } else {
             None
         }
@@ -108,19 +99,17 @@ pub fn save_keys(size : usize, keys_dir : String) -> Result<()> {
     let (serverpk, serversk)= box_::gen_keypair();
 
     for index in 0..size { //each index correspond to the idx of client
-
-        let (ourpk, oursk) = box_::gen_keypair();
         let (pk, sk) = sign::gen_keypair();
 
-        key_pairs.insert(index, (ourpk, pk));
+        key_pairs.insert(index, pk);
 
-        let ck = ClientKeys::new(sk, oursk);
+        let ck = ClientKeys::new(sk);
         client_secret_pairs.insert(index, ck);
     }
 
     let (ha_pk, ha_sk) = box_::gen_keypair();
 
-    let sk = ServerKeys::new(key_pairs, serversk, ha_pk);
+    let sk = ServerKeys::new(key_pairs, serversk, serverpk,ha_pk);
     let server_public_key = ServerPublicKey::new(serverpk);
 
     for (idx, c_k) in client_secret_pairs.into_iter() {
