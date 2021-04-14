@@ -1,4 +1,5 @@
 use color_eyre::eyre::Result;
+use security::key_management::ServerKeys;
 
 use std::{convert::TryFrom, sync::Arc};
 
@@ -10,23 +11,20 @@ use protos::location_master::{ObtainLocationReportRequest, ObtainLocationReportR
 
 use crate::storage::Timeline;
 
+use security::report::{decode_info, decode_report};
+use security::status::{decode_loc_report, encode_loc_response};
+
 pub struct MyLocationMaster {
     storage : Arc<Timeline>,
+    server_keys : Arc<ServerKeys>,
 }
 
 impl MyLocationMaster {
-    pub fn new(storage : Arc<Timeline>) -> MyLocationMaster {
+    pub fn new(storage : Arc<Timeline>, server_keys : Arc<ServerKeys>,) -> MyLocationMaster {
         MyLocationMaster {
             storage,
+            server_keys,
         }
-    }
-
-    fn parse_valid_idx(&self, idx : u64) -> Result<usize, Status> {
-        let res_idx = usize::try_from(idx);
-        if res_idx.is_err() /*|| !self.timeline.is_point(idx.unwrap())*/ {
-            return Err(Status::invalid_argument(format!("Not a valid id: {:}.", idx)));
-        }
-        Ok(res_idx.unwrap())
     }
 
     fn parse_valid_epoch(&self, epoch : u64) -> Result<usize, Status> {
@@ -57,16 +55,43 @@ impl LocationMaster for MyLocationMaster {
     ) -> Result<Response<ObtainLocationReportResponse>, Status> {
         let request = request.get_ref();
 
-        let (req_idx, epoch) =
-            match (self.parse_valid_idx(request.idx), self.parse_valid_idx(request.epoch)) {
-                (Ok(idx), Ok(epoch)) => (idx, epoch),
-                (Err(err), _) | (_, Err(err)) => return Err(err),
+        let info = if let Ok(info) = decode_info(
+            self.server_keys.private_key(),
+            self.server_keys.public_key(),
+            &request.user_info) {
+            info
+        } else {
+            return Err(Status::permission_denied("Unhable to decrept sealed container"));
         };
 
-        match self.storage.get_user_location_at_epoch(epoch, req_idx) {
-            Some((x,y )) => Ok(Response::new(ObtainLocationReportResponse { pos_x : x as u64, pos_y : y as u64,})),
-            None => Err(Status::not_found(format!("User with id {:} not found at epoch {:}", req_idx, epoch))),
-        } 
+        if !self.storage.valid_ha_nonce(info.nonce()) {
+            return Err(Status::already_exists("nonce already exists"));
+        }
+
+        let loc_req = match decode_loc_report(
+            self.server_keys.ha_public_key(),
+            info.key(),
+            &request.user,
+            info.nonce(),
+        ) {
+            Ok(location_request) => {
+                if !self.storage.add_ha_nonce(info.nonce().clone()) {
+                    return  Err(Status::permission_denied("nonce already exists"));
+                }
+                location_request
+            }
+            Err(_) => return  Err(Status::permission_denied("Unable to decrypt report"))
+        };
+        match self.storage.get_user_location_at_epoch(loc_req.epoch(), loc_req.idx()) {
+            Some((x,y )) =>  {
+                let (location, nonce) = encode_loc_response(info.key(), x, y);
+                Ok( Response::new(ObtainLocationReportResponse {
+                    nonce : nonce.0.to_vec(),
+                    location,
+                }))
+            }
+            None => Err(Status::not_found(format!("User with id {:} not found at epoch {:}", loc_req.idx(), loc_req.epoch()))),
+        }
     }
 
     async fn obtain_users_at_location(
@@ -84,6 +109,6 @@ impl LocationMaster for MyLocationMaster {
         match self.storage.get_users_at_epoch_at_location(epoch, x, y) {
             Some(users) => Ok(Response::new(ObtainUsersAtLocationResponse{ idxs : users.iter().map(|&idx| idx as u64).collect() })),
             None => Err(Status::not_found(format!("No users found at location ({:}, {:}) at epoch {:}", x, y, epoch))),
-        } 
+        }
     }
 }

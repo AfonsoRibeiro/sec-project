@@ -55,6 +55,7 @@ pub struct Timeline {
     size : usize,
     blacklist : RwLock<HashSet<usize>>,
     nonces : RwLock<HashMap<usize, HashSet<Nonce>>>,
+    ha_nonces : RwLock<HashSet<Nonce>>,
     filename: String,
 }
 
@@ -66,6 +67,7 @@ impl Timeline {
             size,
             blacklist : RwLock::new(HashSet::new()),
             nonces : RwLock::new(HashMap::new()),
+            ha_nonces : RwLock::new(HashSet::new()),
             filename,
         }
     }
@@ -156,6 +158,16 @@ impl Timeline {
            nonces.insert(idx, user_nonce);
            true
         }
+    }
+
+    pub fn valid_ha_nonce(&self, nonce : &Nonce) -> bool {
+        let nonces = self.ha_nonces.read().unwrap();
+        !nonces.contains(&nonce)
+    }
+
+    pub fn add_ha_nonce(&self, nonce : Nonce) -> bool {
+        let mut nonces = self.ha_nonces.write().unwrap();
+        nonces.insert(nonce)
     }
 
     pub fn filename(&self) -> &str { &self.filename }

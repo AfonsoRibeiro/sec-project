@@ -46,12 +46,12 @@ async fn main() -> Result<()> {
 
     let timeline = Arc::new(retrieve_timeline(&opt.grid_file)?);
 
-    let client_keys = Arc::new(retrieve_client_keys(&opt.keys_dir, opt.idx)?);
-    let server_keys = Arc::new(retrieve_server_public_keys(&opt.keys_dir)?);
-
     if !timeline.is_point(opt.idx) {
         return Err(eyre!("Error : Invalid id for client {:}.", opt.idx));
     }
+
+    let client_keys = Arc::new(retrieve_client_keys(&opt.keys_dir, opt.idx)?);
+    let server_keys = Arc::new(retrieve_server_public_keys(&opt.keys_dir)?);
 
     sodiumoxide::init().expect("Unable to make sodiumoxide thread safe");
 

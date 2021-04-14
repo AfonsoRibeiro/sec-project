@@ -30,17 +30,17 @@ impl ClientKeys {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct HAClientKeys {
-    private_key : box_::SecretKey,
+    private_key : sign::SecretKey,
 }
 
 impl HAClientKeys {
-    fn new(private_key : box_::SecretKey,) -> HAClientKeys {
+    fn new(private_key : sign::SecretKey,) -> HAClientKeys {
         HAClientKeys {
             private_key,
         }
     }
 
-    pub fn private_key(&self) -> box_::SecretKey { self.private_key.clone() }
+    pub fn sign_key(&self) -> sign::SecretKey { self.private_key.clone() }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -62,7 +62,7 @@ pub struct ServerKeys {
     private_key : box_::SecretKey,
     public_key : box_::PublicKey,
     client_keys : HashMap<usize, (sign::PublicKey, box_::PublicKey)>,
-    ha_public_key : box_::PublicKey,
+    ha_public_key : sign::PublicKey,
 }
 
 impl ServerKeys{
@@ -70,7 +70,7 @@ impl ServerKeys{
         client_keys : HashMap<usize, (sign::PublicKey, box_::PublicKey)>,
         private_key : box_::SecretKey,
         public_key : box_::PublicKey,
-        ha_key : box_::PublicKey
+        ha_key : sign::PublicKey
     ) -> ServerKeys {
         ServerKeys {
             private_key,
@@ -82,7 +82,7 @@ impl ServerKeys{
 
     pub fn private_key(&self) -> &box_::SecretKey { &self.private_key }
     pub fn public_key(&self) -> &box_::PublicKey { &self.public_key }
-    pub fn ha_public_key(&self) -> &box_::PublicKey { &self.ha_public_key }
+    pub fn ha_public_key(&self) -> &sign::PublicKey { &self.ha_public_key }
 
     pub fn client_public_key(&self, idx : usize) -> Option<&box_::PublicKey> {
         if let Some((_, pkey)) = self.client_keys.get(&idx) {
@@ -125,7 +125,7 @@ pub fn save_keys(size : usize, keys_dir : String) -> Result<()> {
         client_secret_pairs.insert(index, ck);
     }
 
-    let (ha_pk, ha_sk) = box_::gen_keypair();
+    let (ha_pk, ha_sk) = sign::gen_keypair();
 
     let sk = ServerKeys::new(key_pairs, serversk, serverpk,ha_pk);
     let server_public_key = ServerPublicKey::new(serverpk);

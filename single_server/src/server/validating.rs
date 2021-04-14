@@ -14,7 +14,7 @@ use protos::location_storage::{SubmitLocationReportRequest, SubmitLocationReport
 use security::{key_management::ServerKeys, report::Report};
 use security::proof::verify_proof;
 use security::report::{decode_info, decode_report};
-use security::status::{decode_loc_report, encode_location_report};
+use security::status::{decode_loc_report, encode_loc_response};
 
 use sodiumoxide::crypto::box_;
 use sodiumoxide::crypto::secretbox;
@@ -185,10 +185,10 @@ impl LocationStorage for MyLocationStorage {
         };
         match self.storage.get_user_location_at_epoch(loc_req.epoch(), loc_req.idx()) {
             Some((x,y )) =>  {
-                let nonce = secretbox::gen_nonce();
+                let (location, nonce) = encode_loc_response(info.key(), x, y);
                 Ok( Response::new(ObtainLocationReportResponse {
                     nonce : nonce.0.to_vec(),
-                    location : secretbox::seal(b"", &nonce, info.key()),
+                    location,
                 }))
             }
             None => Err(Status::not_found(format!("User with id {:} not found at epoch {:}", loc_req.idx(), loc_req.epoch()))),

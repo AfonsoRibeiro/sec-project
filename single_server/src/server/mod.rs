@@ -14,7 +14,7 @@ use security::key_management::ServerKeys;
 pub async fn start_server(addr : String, storage : Arc<Timeline>, server_keys : Arc<ServerKeys>, f_line : usize) -> Result<()> {
     let addr = addr.parse()?;
     let validater = validating::MyLocationStorage::new(storage.clone(), server_keys.clone(), f_line);
-    let manager = management::MyLocationMaster::new(storage.clone());
+    let manager = management::MyLocationMaster::new(storage.clone(), server_keys);
 
     println!("LocationStorageServer listening on {}", addr);
 
