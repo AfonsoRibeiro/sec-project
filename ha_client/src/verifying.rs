@@ -2,10 +2,10 @@ use eyre::eyre;
 use color_eyre::eyre::Result;
 
 use sodiumoxide::crypto::{box_, sign};
-use status::encode_location_report;
+use status::{UsersAtLocationRequest, encode_location_report, encode_users_at_location_report};
 use tonic::transport::Uri;
 
-use security::status::{self, LocationReportRequest, LocationReportResponse};
+use security::status::{self, LocationReportRequest};
 
 use protos::location_master::location_master_client::LocationMasterClient;
 use protos::location_master::{ObtainLocationReportRequest, ObtainUsersAtLocationRequest};
@@ -23,11 +23,11 @@ pub async fn obtain_location_report(
     let mut client = LocationMasterClient::connect(url).await?;
 
     let loc_report = LocationReportRequest::new(idx, epoch);
-    let (user_info, user, key) = encode_location_report(&sign_key, server_key, &loc_report, idx);
+    let (info, user, key) = encode_location_report(&sign_key, server_key, &loc_report, idx);
 
     let request = tonic::Request::new(ObtainLocationReportRequest {
         user,
-        user_info
+        info
     });
 
     let loc = match client.obtain_location_report(request).await {
@@ -51,21 +51,35 @@ pub async fn obtain_location_report(
     }
 }
 
-pub async fn obtain_users_at_location(epoch : usize, pos_x : usize, pos_y : usize, url : Uri) -> Result<Vec<u64>> {
+pub async fn obtain_users_at_location(
+    epoch : usize,
+    pos_x : usize,
+    pos_y : usize,
+    url : Uri,
+    sign_key : &sign::SecretKey,
+    server_key : &box_::PublicKey,
+) -> Result<Vec<usize>> {
 
     let mut client = LocationMasterClient::connect(url).await?;
 
+    let loc_report = UsersAtLocationRequest::new((pos_x, pos_y), epoch);
+    let (info, place, key) = encode_users_at_location_report(&sign_key, server_key, &loc_report, 0);
+
     let request = tonic::Request::new(ObtainUsersAtLocationRequest {
-        epoch : epoch as u64,
-        pos_x : pos_x as u64,
-        pos_y : pos_y as u64,
+        place,
+        info
     });
 
-    let response = match client.obtain_users_at_location(request).await {
-        Ok(response) => response,
+    match client.obtain_users_at_location(request).await {
+        Ok(response) => {
+            let response = response.get_ref();
+            if let Ok(idxs) = status::decode_users_at_loc_response(&key, &response.nonce, &response.idxs) {
+                Ok(idxs.idxs)
+            } else {
+                return Err(eyre!("obtain_location_report unable to validate server response "));
+            }
+        }
         Err(status) => return Err(eyre!("ObtainUsersAtLocation failed with code {:?} and message {:?}.",
                             status.code(), status.message())),
-    };
-
-    Ok(response.get_ref().idxs.clone())
+    }
 }

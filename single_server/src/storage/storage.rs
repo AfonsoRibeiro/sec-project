@@ -120,7 +120,7 @@ impl Timeline {
         ((lower_x, lower_y), (upper_x, upper_y))
     }
 
-    pub fn get_users_at_epoch_at_location(&self, epoch: usize, pos_x : usize, pos_y : usize) -> Option<Vec<usize>> {
+    pub fn get_users_at_epoch_at_location(&self, epoch: usize, (pos_x, pos_y) : (usize, usize)) -> Option<Vec<usize>> {
         let vec = self.timeline.read().unwrap();  // Fix this : dont assume this
 
         if vec.len() > epoch && self.valid_pos(pos_x, pos_y){

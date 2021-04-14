@@ -9,7 +9,7 @@ service LocationMaster {
 
 message ObtainLocationReportRequest {
     bytes user = 1;
-    bytes user_info = 2;
+    bytes info = 2;
 }
 
 message ObtainLocationReportResponse {
@@ -18,11 +18,11 @@ message ObtainLocationReportResponse {
 }
 
 message ObtainUsersAtLocationRequest {
-    uint64 pos_x = 1;
-    uint64 pos_y = 2;
-    uint64 epoch = 3;
+    bytes place = 1;
+    bytes info = 2;
 }
 
 message ObtainUsersAtLocationResponse {
-    repeated uint64 idxs = 1;
+    bytes nonce = 1;
+    bytes idxs = 2;
 }

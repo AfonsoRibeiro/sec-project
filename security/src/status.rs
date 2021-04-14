@@ -71,6 +71,22 @@ impl UsersAtLocationResponse {
     }
 }
 
+pub fn decode_info(
+    oursk : &box_::SecretKey,
+    ourpk : &box_::PublicKey,
+    cipherinfo : &Vec<u8>,
+) -> Result<ReportInfo> {
+
+    let decoded_info = sealedbox::open(cipherinfo, ourpk, oursk).unwrap(); //TODO: fix unwrap
+    let info = serde_json::from_slice(&decoded_info)?;
+
+    Ok(info)
+}
+
+/**
+ * Obtain Location
+ */
+
 pub fn encode_location_report(
     signsk : &sign::SecretKey,
     theirpk : &box_::PublicKey,
@@ -91,6 +107,54 @@ pub fn encode_location_report(
 
     (sealedbox::seal(&textinfo, theirpk), enc_report, key)
 }
+
+pub fn decode_loc_report(
+    signpk : &sign::PublicKey,
+    sim_key : &secretbox::Key,
+    cipherreport : &Vec<u8>,
+    nonce : &secretbox::Nonce,
+) -> Result<LocationReportRequest> {
+
+    let decoded_report = secretbox::open(cipherreport, nonce, sim_key).unwrap(); //TODO: fix unwrap
+
+    let report = sign::verify(&decoded_report,signpk).unwrap(); //TODO: fix unwrap
+
+    let report = serde_json::from_slice(&report)?;
+
+    Ok(report)
+}
+
+//
+
+pub fn encode_loc_response(
+    key : &secretbox::Key,
+    x : usize,
+    y : usize,
+) -> (Vec<u8>, secretbox::Nonce) {
+
+    let nonce = secretbox::gen_nonce();
+
+    let loc = LocationReportResponse::new(x, y);
+    let plaintext = serde_json::to_vec(&loc).unwrap();
+    (secretbox::seal(&plaintext, &nonce, key), nonce)
+}
+
+pub fn decode_response_location(
+    key : &secretbox::Key,
+    nonce :&Vec<u8>,
+    cyphertext : &Vec<u8>,
+) -> Result<LocationReportResponse> {
+    if let Some(nonce) = secretbox::Nonce::from_slice(nonce) {
+        let decoded_response = secretbox::open(cyphertext, &nonce, key).unwrap(); //TODO: fix unwrap
+        let response = serde_json::from_slice(&decoded_response)?;
+        Ok(response)
+    } else {
+        Err(eyre!("Decode of location response failed."))
+    }
+}
+/**
+ * Obtain Users at Location
+ */
 
 pub fn encode_users_at_location_report(
     signsk : &sign::SecretKey,
@@ -113,59 +177,6 @@ pub fn encode_users_at_location_report(
     (sealedbox::seal(&textinfo, theirpk), enc_report, key)
 }
 
-pub fn decode_info(
-    oursk : &box_::SecretKey,
-    ourpk : &box_::PublicKey,
-    cipherinfo : &Vec<u8>,
-) -> Result<ReportInfo> {
-
-    let decoded_info = sealedbox::open(cipherinfo, ourpk, oursk).unwrap(); //TODO: fix unwrap
-    let info = serde_json::from_slice(&decoded_info)?;
-
-    Ok(info)
-}
-
-pub fn encode_loc_response(
-    key : &secretbox::Key,
-    x : usize,
-    y : usize,
-) -> (Vec<u8>, secretbox::Nonce) {
-
-    let nonce = secretbox::gen_nonce();
-
-    let loc = LocationReportResponse::new(x, y);
-    let plaintext = serde_json::to_vec(&loc).unwrap();
-    (secretbox::seal(&plaintext, &nonce, key), nonce)
-}
-
-pub fn decode_loc_report(
-    signpk : &sign::PublicKey,
-    sim_key : &secretbox::Key,
-    cipherreport : &Vec<u8>,
-    nonce : &secretbox::Nonce,
-) -> Result<LocationReportRequest> {
-
-    let decoded_report = secretbox::open(cipherreport, nonce, sim_key).unwrap(); //TODO: fix unwrap
-
-    let report = sign::verify(&decoded_report,signpk).unwrap(); //TODO: fix unwrap
-
-    let report = serde_json::from_slice(&report)?;
-
-    Ok(report)
-}
-
-pub fn encode_users_at_loc_report(
-    key : &secretbox::Key,
-    idxs : Vec<usize>,
-) -> (Vec<u8>, secretbox::Nonce) {
-
-    let nonce = secretbox::gen_nonce();
-
-    let loc = UsersAtLocationResponse::new(idxs);
-    let plaintext = serde_json::to_vec(&loc).unwrap();
-    (secretbox::seal(&plaintext, &nonce, key), nonce)
-}
-
 pub fn decode_users_at_loc_report(
     signpk : &sign::PublicKey,
     sim_key : &secretbox::Key,
@@ -182,21 +193,22 @@ pub fn decode_users_at_loc_report(
     Ok(report)
 }
 
-pub fn decode_response_location(
+//
+
+pub fn encode_users_at_loc_response(
     key : &secretbox::Key,
-    nonce :&Vec<u8>,
-    cyphertext : &Vec<u8>,
-) -> Result<LocationReportResponse> {
-    if let Some(nonce) = secretbox::Nonce::from_slice(nonce) {
-        let decoded_response = secretbox::open(cyphertext, &nonce, key).unwrap(); //TODO: fix unwrap
-        let response = serde_json::from_slice(&decoded_response)?;
-        Ok(response)
-    } else {
-        Err(eyre!("Decode of location response failed."))
-    }
+    idxs : Vec<usize>,
+) -> (Vec<u8>, secretbox::Nonce) {
+
+    let nonce = secretbox::gen_nonce();
+
+    let loc = UsersAtLocationResponse::new(idxs);
+    let plaintext = serde_json::to_vec(&loc).unwrap();
+    (secretbox::seal(&plaintext, &nonce, key), nonce)
 }
 
-pub fn decode_response_users_at_location(
+
+pub fn decode_users_at_loc_response(
     key : &secretbox::Key,
     nonce :&Vec<u8>,
     cyphertext : &Vec<u8>,

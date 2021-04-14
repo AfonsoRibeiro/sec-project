@@ -11,8 +11,8 @@ use protos::location_master::{ObtainLocationReportRequest, ObtainLocationReportR
 
 use crate::storage::Timeline;
 
-use security::report::{decode_info, decode_report};
-use security::status::{decode_loc_report, encode_loc_response};
+use security::report::decode_info;
+use security::status::{decode_loc_report, encode_loc_response, decode_users_at_loc_report, encode_users_at_location_report, encode_users_at_loc_response};
 
 pub struct MyLocationMaster {
     storage : Arc<Timeline>,
@@ -58,7 +58,7 @@ impl LocationMaster for MyLocationMaster {
         let info = if let Ok(info) = decode_info(
             self.server_keys.private_key(),
             self.server_keys.public_key(),
-            &request.user_info) {
+            &request.info) {
             info
         } else {
             return Err(Status::permission_denied("Unhable to decrept sealed container"));
@@ -98,17 +98,45 @@ impl LocationMaster for MyLocationMaster {
         &self,
         request : Request<ObtainUsersAtLocationRequest>
     ) ->Result<Response<ObtainUsersAtLocationResponse>, Status> {
+
         let request = request.get_ref();
 
-        let ((x, y), epoch) =
-            match (self.parse_valid_pos(request.pos_x, request.pos_y), self.parse_valid_epoch(request.epoch)) {
-                (Ok(pos), Ok(epoch)) => (pos, epoch),
-                (Err(err), _) | (_, Err(err)) => return Err(err),
+        let info = if let Ok(info) = decode_info(
+            self.server_keys.private_key(),
+            self.server_keys.public_key(),
+            &request.info) {
+            info
+        } else {
+            return Err(Status::permission_denied("Unhable to decrept sealed container"));
         };
 
-        match self.storage.get_users_at_epoch_at_location(epoch, x, y) {
-            Some(users) => Ok(Response::new(ObtainUsersAtLocationResponse{ idxs : users.iter().map(|&idx| idx as u64).collect() })),
-            None => Err(Status::not_found(format!("No users found at location ({:}, {:}) at epoch {:}", x, y, epoch))),
+        if !self.storage.valid_ha_nonce(info.nonce()) {
+            return Err(Status::already_exists("nonce already exists"));
+        }
+
+        let loc_req = match decode_users_at_loc_report(
+            self.server_keys.ha_public_key(),
+            info.key(),
+            &request.place,
+            info.nonce(),
+        ) {
+            Ok(location_request) => {
+                if !self.storage.add_ha_nonce(info.nonce().clone()) {
+                    return  Err(Status::permission_denied("nonce already exists"));
+                }
+                location_request
+            }
+            Err(_) => return  Err(Status::permission_denied("Unable to decrypt report"))
+        };
+        match self.storage.get_users_at_epoch_at_location(loc_req.epoch(), loc_req.pos()) {
+            Some(idxs) =>  {
+                let (idxs, nonce) = encode_users_at_loc_response(info.key(), idxs);
+                Ok( Response::new(ObtainUsersAtLocationResponse {
+                    nonce : nonce.0.to_vec(),
+                    idxs,
+                }))
+            }
+            None => Err(Status::not_found(format!("Location {:?} at epoch {:} not found.", loc_req.pos(), loc_req.epoch()))),
         }
     }
 }

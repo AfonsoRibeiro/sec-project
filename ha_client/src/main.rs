@@ -65,8 +65,8 @@ async fn read_commands(grid_size : usize, server : Uri, ha_keys : &HAClientKeys,
                     grid_size,
                     server.clone(),
                     &ha_keys.sign_key(),
-                    &server_keys.public_key()).await
-                {
+                    &server_keys.public_key()
+                ).await {
                     Ok((x, y)) => println!("location {:} {:}", x, y),
                     Err(err) => println!("{:}", err.to_string()),
                 }
@@ -76,7 +76,14 @@ async fn read_commands(grid_size : usize, server : Uri, ha_keys : &HAClientKeys,
                 let pos_x  = cap[3].parse::<usize>();
                 let pos_y  = cap[4].parse::<usize>();
                 if epoch.is_err() || pos_x.is_err() || pos_y.is_err() { print_command_msg(); continue; }
-                match verifying::obtain_users_at_location(epoch.unwrap(), pos_x.unwrap(), pos_y.unwrap(), server.clone()).await {
+                match verifying::obtain_users_at_location(
+                    epoch.unwrap(),
+                    pos_x.unwrap(),
+                    pos_y.unwrap(),
+                    server.clone(),
+                    &ha_keys.sign_key(),
+                    &server_keys.public_key()
+                ).await {
                     Ok(clients) => println!("clients {:?}", clients),
                     Err(err) => println!("{:}", err.to_string()),
                 }

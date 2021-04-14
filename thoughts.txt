@@ -3,13 +3,9 @@ what happens when client cant get 2*f' + 1 proofs?
 users have no encryption, shoud the requester just put the id alongside the proof in report or does it need to be the proofer sending its id so the requester knows it
 
 TODO:
- - Cryptography
+ - if time improve readability of security (TODO create new struct with no id for ha_client)
 
- - Cominication encrypted ha_client - server and client - server
-
- - server needs to store the state -> 2 Files
-
- - Can f_line just be a random number | Calculate this property
+ - server needs to store the state -> 2 Files 
 
  - client comunitcation need integrity | not sure yet
 
