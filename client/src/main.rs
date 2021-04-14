@@ -46,8 +46,8 @@ async fn main() -> Result<()> {
 
     let timeline = Arc::new(retrieve_timeline(&opt.grid_file)?);
 
-    let client_keys = retrieve_client_keys(&opt.keys_dir, opt.idx)?;
-    let server_keys = retrieve_server_public_keys(&opt.keys_dir)?;
+    let client_keys = Arc::new(retrieve_client_keys(&opt.keys_dir, opt.idx)?);
+    let server_keys = Arc::new(retrieve_server_public_keys(&opt.keys_dir)?);
 
     if !timeline.is_point(opt.idx) {
         return Err(eyre!("Error : Invalid id for client {:}.", opt.idx));
@@ -58,9 +58,9 @@ async fn main() -> Result<()> {
     let proofer =
         tokio::spawn(proofing_system::start_proofer(opt.idx, timeline.clone(), client_keys.sign_key()));
 
-    tokio::spawn(epochs_generator(timeline.clone(), opt.idx, opt.server_url.clone(), client_keys, server_keys));
+    tokio::spawn(epochs_generator(timeline.clone(), opt.idx, opt.server_url.clone(), client_keys.clone(), server_keys.clone()));
 
-    read_commands(timeline.clone(), opt.idx, opt.server_url).await;
+    read_commands(timeline.clone(), opt.idx, opt.server_url, client_keys, server_keys).await;
 
     let _x = proofer.await; // Not important result just dont end
 
@@ -102,12 +102,9 @@ async fn epochs_generator(
     timeline : Arc<Timeline>,
     idx : usize,
     server_url : Uri,
-    client_keys : ClientKeys,
-    server_keys : ServerPublicKey,
+    client_keys : Arc<ClientKeys>,
+    server_keys : Arc<ServerPublicKey>,
 ) -> Result<()> {
-
-    let client_keys = Arc::new(client_keys);
-    let server_keys = Arc::new(server_keys);
 
     let start = Instant::now() + Duration::from_millis(2000);
     let mut interval = interval_at(start, Duration::from_millis(15000));
@@ -123,7 +120,13 @@ async fn epochs_generator(
 }
 
 
-async fn read_commands(timeline : Arc<Timeline>, idx : usize, server : Uri) {
+async fn read_commands(
+    timeline : Arc<Timeline>,
+    idx : usize,
+    server : Uri,
+    client_keys : Arc<ClientKeys>,
+    server_keys : Arc<ServerPublicKey>,
+){
     print_command_msg();
 
     let orep_pat = Regex::new(r"r(eport)? [+]?(\d+)").unwrap();
@@ -140,7 +143,7 @@ async fn read_commands(timeline : Arc<Timeline>, idx : usize, server : Uri) {
             if let Some(cap) = orep_pat.captures(buffer.trim_end()) {
                 let epoch  = cap[2].parse::<usize>();
                 if epoch.is_err() { print_command_msg(); continue; }
-                match reports::obtain_location_report(timeline.clone(), idx, epoch.unwrap(), server.clone()).await {
+                match reports::obtain_location_report(timeline.clone(), idx, epoch.unwrap(), server.clone(), client_keys.sign_key(), server_keys.public_key()).await {
                     Ok((x, y)) => println!("location {:} {:}", x, y),
                     Err(err) => println!("{:}", err.to_string()),
                 }

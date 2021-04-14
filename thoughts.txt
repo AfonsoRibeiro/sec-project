@@ -15,5 +15,4 @@ TODO:
 
  - What should a byzantine user try?
 
-
  - f_max = f' * (size*size - 2*size - 2*(size-2))   | n of squares not on the edge

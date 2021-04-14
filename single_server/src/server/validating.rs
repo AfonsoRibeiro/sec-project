@@ -14,7 +14,7 @@ use protos::location_storage::{SubmitLocationReportRequest, SubmitLocationReport
 use security::{key_management::ServerKeys, report::Report};
 use security::proof::verify_proof;
 use security::report::{decode_info, decode_report};
-
+use security::status::{decode_loc_report, encode_location_report};
 
 use sodiumoxide::crypto::box_;
 use sodiumoxide::crypto::secretbox;
@@ -150,14 +150,49 @@ impl LocationStorage for MyLocationStorage {
     ) -> Result<Response<ObtainLocationReportResponse>, Status> {
         let request = request.get_ref();
 
-        let (req_idx, epoch) =
-            match (self.parse_valid_idx(request.idx), self.parse_valid_epoch(request.epoch)) {
-                (Ok(idx), Ok(epoch)) => (idx, epoch),
-                (Err(err), _) | (_, Err(err)) => return Err(err),
+        let info = if let Ok(info) = decode_info(
+            self.server_keys.private_key(),
+            self.server_keys.public_key(),
+            &request.user_info) {
+            info
+        } else {
+            return Err(Status::permission_denied("Unhable to decrept sealed container"));
         };
-        match self.storage.get_user_location_at_epoch(epoch, req_idx) {
-            Some((x,y )) => Ok(Response::new(ObtainLocationReportResponse { pos_x : x as u64, pos_y : y as u64,})),
-            None => Err(Status::not_found(format!("User with id {:} not found at epoch {:}", req_idx, epoch))),
+
+        let client_sign_key = if let Some(ck) = self.server_keys.client_sign_key(info.idx()) {
+            ck
+        } else {
+            return Err(Status::permission_denied(format!("Unable to find client {:} keys", info.idx())));
+        };
+
+        if !self.storage.valid_nonce(info.idx(), info.nonce()) {
+            return Err(Status::already_exists("nonce already exists"));
         }
+
+        let loc_req = match decode_loc_report(
+            client_sign_key,
+            info.key(),
+            &request.user,
+            info.nonce(),
+        ) {
+            Ok(location_request) => {
+                if !self.storage.add_nonce(info.idx(), info.nonce().clone()) {
+                    return  Err(Status::permission_denied("nonce already exists"));
+                }
+                location_request
+            }
+            Err(_) => return  Err(Status::permission_denied("Unable to decrypt report"))
+        };
+        match self.storage.get_user_location_at_epoch(loc_req.epoch(), loc_req.idx()) {
+            Some((x,y )) =>  {
+                let nonce = secretbox::gen_nonce();
+                Ok( Response::new(ObtainLocationReportResponse {
+                    nonce : nonce.0.to_vec(),
+                    location : secretbox::seal(b"", &nonce, info.key()),
+                }))
+            }
+            None => Err(Status::not_found(format!("User with id {:} not found at epoch {:}", loc_req.idx(), loc_req.epoch()))),
+        }
+
     }
 }

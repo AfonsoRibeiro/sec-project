@@ -1,5 +1,6 @@
 use eyre::eyre;
 use color_eyre::eyre::Result;
+use status::encode_location_report;
 
 use std::sync::Arc;
 use std::convert::TryFrom;
@@ -12,7 +13,7 @@ use protos::location_storage::location_storage_client::LocationStorageClient;
 
 use sodiumoxide::crypto::sign;
 use sodiumoxide::crypto::box_;
-
+use security::status::{self, LocationReportRequest, LocationReportResponse};
 use security::report::{self, Report, success_report};
 
 
@@ -48,29 +49,39 @@ pub async fn submit_location_report(
 }
 
 
-pub async fn obtain_location_report(timeline : Arc<Timeline>, idx : usize, epoch : usize, url : Uri) -> Result<(usize, usize)> {
+pub async fn obtain_location_report(
+    timeline : Arc<Timeline>,
+    idx : usize,
+    epoch : usize,
+    url : Uri,
+    sign_key : sign::SecretKey,
+    server_key : box_::PublicKey,
+)-> Result<(usize, usize)> {
+
+    let loc_report = LocationReportRequest::new(idx, epoch);
+    let (user_info, user, key) = encode_location_report(&sign_key, &server_key, &loc_report, idx);
 
     let mut client = LocationStorageClient::connect(url).await?;
 
     let request = tonic::Request::new(ObtainLocationReportRequest {
-        idx: idx as u64,
-        epoch: epoch as u64,
+        user,
+        user_info
     });
 
-    let response = match client.obtain_location_report(request).await {
-        Ok(response) => response,
+    let loc = match client.obtain_location_report(request).await {
+        Ok(response) => {
+            let response = response.get_ref();
+            if let Ok(x) = status::decode_response_location(&key, &response.nonce, &response.location) {
+                x
+            } else {
+                return Err(eyre!("obtain_location_report unable to validate server response "));
+            }
+        }
         Err(status) => return Err(eyre!("ObtainLocationReport failed with code {:?} and message {:?}.",
                             status.code(), status.message())),
     };
 
-    let x: Result<usize, std::num::TryFromIntError> = usize::try_from(response.get_ref().pos_x);
-    let y = usize::try_from(response.get_ref().pos_y);
-
-    if x.is_err() || y.is_err() {
-        return Err(eyre!("Response : Not a valid x ou y value"));
-    }
-
-    let (x, y) = (x.unwrap(), y.unwrap());
+    let (x, y) = loc.pos;
     if timeline.valid_pos(x, y) {
         Ok((x, y))
     } else {
