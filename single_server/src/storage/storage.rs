@@ -7,6 +7,10 @@ use eyre::{eyre, Context};
 use color_eyre::eyre::Result;
 use sodiumoxide::crypto::secretbox::Nonce;
 
+use atomicwrites::{AtomicFile, AllowOverwrite, move_atomic, replace_atomic};
+
+use crate::server;
+
 #[derive(Debug, Serialize, Deserialize)]
 struct Report {
     loc : (usize, usize),
@@ -72,7 +76,7 @@ impl Timeline {
         }
     }
 
-    pub fn add_user_location_at_epoch(&self, epoch: usize, (pos_x, pos_y) : (usize, usize), idx: usize, report : Vec<u8>) -> Result<()>{ 
+    pub fn add_user_location_at_epoch(&self, epoch: usize, (pos_x, pos_y) : (usize, usize), idx: usize, report : Vec<u8>) -> Result<()>{
         if self.blacklist.read().unwrap().contains(&idx) {
             return Err(eyre!("Malicious user detected!"));
         }
@@ -176,10 +180,10 @@ impl Timeline {
     pub fn filename(&self) -> &str { &self.filename }
 }
 
-pub async fn save_storage(filename : &str, timeline : &Timeline) -> Result<()> { //TODO: make it async, depends on how the database is updated
-    let file = File::create(filename)?;
+pub async fn save_storage(filename : &str, timeline : &Timeline) -> Result<()> {
+    let atomic_file = AtomicFile::new(filename, AllowOverwrite);
 
-    serde_json::to_writer(BufWriter::new(file), &timeline)?;
+    atomic_file.write(|f| serde_json::to_writer(BufWriter::new(f), timeline) )?;
 
     Ok(())
 }

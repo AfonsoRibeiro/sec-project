@@ -81,7 +81,7 @@ pub fn decode_info(
     cipherinfo : &Vec<u8>,
 ) -> Result<ReportInfo> {
 
-    let decoded_info = sealedbox::open(cipherinfo, ourpk, oursk).map_err(|_| eyre!("decode_info: Unable to open sealedbox"))?; 
+    let decoded_info = sealedbox::open(cipherinfo, ourpk, oursk).map_err(|_| eyre!("decode_info: Unable to open sealedbox"))?;
     let info = serde_json::from_slice(&decoded_info)?;
 
     Ok(info)
@@ -92,14 +92,14 @@ pub fn decode_report(
     sim_key : &secretbox::Key,
     cipherreport : &Vec<u8>,
     nonce : &secretbox::Nonce,
-) -> Result<Report> {
+) -> Result<(Report, Vec<u8>)> {
 
-    let decoded_report = secretbox::open(cipherreport, nonce, sim_key).map_err(|_| eyre!("decoded_report: Unable to open secretbox"))?; 
-    let report = sign::verify(&decoded_report,signpk).map_err(|_| eyre!("decoded_report: Unable to verify report"))?; 
+    let decoded_report = secretbox::open(cipherreport, nonce, sim_key).map_err(|_| eyre!("decoded_report: Unable to open secretbox"))?;
+    let report = sign::verify(&decoded_report,signpk).map_err(|_| eyre!("decoded_report: Unable to verify report"))?;
 
     let report = serde_json::from_slice(&report)?;
 
-    Ok(report)
+    Ok((report, decoded_report))
 }
 
 pub fn success_report(

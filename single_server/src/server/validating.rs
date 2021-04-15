@@ -33,7 +33,7 @@ impl MyLocationStorage {
         }
     }
 
-    fn check_valid_location_report(&self, req_idx : usize, report : &Report) -> bool {
+    fn check_valid_location_report(&self, req_idx : usize, report : &Report) -> bool { //signed report
         if req_idx != report.idx() { return false; }
 
         let (epoch, (pos_x, pos_y)) = (report.epoch(), report.loc());
@@ -89,7 +89,7 @@ impl LocationStorage for MyLocationStorage {
             return Err(Status::already_exists("nonce already exists"));
         }
 
-        let report = match decode_report(
+        let (report, signed_rep) = match decode_report(
             client_sign_key,
             info.key(),
             &request.report,
@@ -105,9 +105,9 @@ impl LocationStorage for MyLocationStorage {
         };
 
 
-        println!("Checking proofs");
+        println!("Checking proofs from {:}", info.idx());
         if self.check_valid_location_report(info.idx(), &report) {
-            match self.storage.add_user_location_at_epoch(report.epoch(), report.loc(), info.idx(), request.report.clone()) {
+            match self.storage.add_user_location_at_epoch(report.epoch(), report.loc(), info.idx(), signed_rep) {
                 Ok(_) => {
                     if let Ok(_) = save_storage(self.storage.filename(), &self.storage).await {
                         let nonce = secretbox::gen_nonce();
