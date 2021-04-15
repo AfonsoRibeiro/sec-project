@@ -76,8 +76,8 @@ async fn reports_generator(
     server_key : Arc<ServerPublicKey>, ) {
 
     if let Some((loc_x, loc_y)) = timeline.get_location_at_epoch(idx, epoch) {
-        let (proofs, idxs_ass) = proofing_system::get_proofs(timeline, idx, epoch).await;
-        if proofs.len() > 0 && proofs.len() == idxs_ass.len() {
+        let (proofs, idxs_ass) = proofing_system::get_proofs(timeline.clone(), idx, epoch).await;
+        if proofs.len() > timeline.f_line && proofs.len() == idxs_ass.len() {
             let report = Report::new(epoch, (loc_x, loc_y), idx, idxs_ass, proofs);
             while reports::submit_location_report(
                 idx,
