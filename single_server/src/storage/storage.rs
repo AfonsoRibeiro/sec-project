@@ -85,9 +85,10 @@ impl Timeline {
             let mut routes = self.routes.write().unwrap();
             let report = Report::new((pos_x, pos_y), report);
             if let Some(user_pos) =  routes.get(&epoch) {
-                if let Some(report) = user_pos.write().unwrap().insert(idx,report) {
+                let mut writable_user_pos = user_pos.write().unwrap();
+                if let Some(report) = writable_user_pos.insert(idx,report) {
                     if report.loc != (pos_x, pos_y) {
-                        user_pos.write().unwrap().remove(&idx);
+                        writable_user_pos.remove(&idx);
                         self.blacklist.write().unwrap().insert(idx);
                         return Err(eyre!("Two positions submitted for the same epoch"));
                     } else {
@@ -193,4 +194,115 @@ pub fn retrieve_storage(file_name : &str) -> Result<Timeline> {
     Ok(serde_json::from_reader(reader).wrap_err_with(
         || format!("Failed to parse struct Timeline from file '{:}'", file_name)
     )? )
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sodiumoxide::crypto::secretbox;
+
+    const SIZE : usize = 10;
+    const EPOCH : usize = 5;
+    const FILENAME : &str = "storage.txt";
+    const POS_X : usize = 3;
+    const DIFF_POS_X : usize = 5;
+    const POS_Y : usize = 5;
+    const IDX : usize = 785;
+
+    #[test]
+    fn new_grid() {
+        let grid = Grid::new_empty(SIZE);
+        assert_eq!(SIZE, grid.size);
+
+        for collum in grid.grid.iter() {
+            for square in collum.iter() {
+                assert_eq!(0, square.read().unwrap().len())
+            }
+        }
+    }
+
+    #[test]
+    fn grid_add_user() {
+        let grid = Grid::new_empty(SIZE);
+        grid.add_user_location(POS_X, POS_Y, IDX);
+        let users = grid.get_users_at_location(POS_X, POS_Y);
+        assert_eq!(1, users.len());
+        assert_eq!(IDX, users[0]);
+    }
+
+    #[test]
+    fn build_timeline() {
+        let timeline = Timeline::new(SIZE, FILENAME.to_string());
+        assert_eq!(SIZE, timeline.size);
+    }
+
+    #[tokio::test]
+    async fn save_retrive_timeline() {
+        let storage = Timeline::new(SIZE, FILENAME.to_string());
+
+        assert!(save_storage(FILENAME, &storage).await.is_ok());
+
+        let retrieved_storage = retrieve_storage(FILENAME).unwrap();
+
+        assert_eq!(SIZE, retrieved_storage.size);
+    }
+
+    #[test]
+    fn add_user() {
+        let storage = Timeline::new(SIZE, FILENAME.to_string());
+
+        assert!(storage.add_user_location_at_epoch(EPOCH, (POS_X, POS_Y), IDX, "report".as_bytes().to_vec()).is_ok());
+
+        let (x, y) = storage.get_user_location_at_epoch(EPOCH, IDX).unwrap();
+
+        assert_eq!(POS_X, x);
+        assert_eq!(POS_Y, y);
+
+        let users = storage.get_users_at_epoch_at_location(EPOCH, (POS_X, POS_Y)).unwrap();
+
+        assert_eq!(1, users.len());
+
+        assert_eq!(IDX, users[0]);
+    }
+
+    #[test]
+    fn add_user_out_of_bound() {
+        let storage = Timeline::new(SIZE, FILENAME.to_string());
+
+        assert!(storage.add_user_location_at_epoch(EPOCH, (SIZE, POS_Y), IDX, "report".as_bytes().to_vec()).is_err());
+    }
+
+    #[test]
+    fn double_report_at_same_epoch_diff_pos() {
+        let storage = Timeline::new(SIZE, FILENAME.to_string());
+
+        assert!(storage.add_user_location_at_epoch(EPOCH, (POS_X, POS_Y), IDX, "report".as_bytes().to_vec()).is_ok());
+
+        assert!(storage.add_user_location_at_epoch(EPOCH, (DIFF_POS_X, POS_Y), IDX, "report".as_bytes().to_vec()).is_err());
+    }
+
+    #[test]
+    fn double_report_at_same_epoch_same_pos() {
+        let storage = Timeline::new(SIZE, FILENAME.to_string());
+
+        assert!(storage.add_user_location_at_epoch(EPOCH, (POS_X, POS_Y), IDX, "report".as_bytes().to_vec()).is_ok());
+
+        assert!(storage.add_user_location_at_epoch(EPOCH, (POS_X, POS_Y), IDX, "report".as_bytes().to_vec()).is_ok());
+    }
+
+    #[test]
+    fn test_nonce() {
+        let nonce : secretbox::Nonce = secretbox::gen_nonce();
+
+        let storage = Timeline::new(SIZE, FILENAME.to_string());
+
+        assert!(storage.valid_nonce(IDX, &nonce));
+
+        assert!(storage.add_nonce(IDX, nonce));
+
+        assert!(!storage.valid_nonce(IDX, &nonce));
+
+        assert!(!storage.add_nonce(IDX, nonce));
+    }
 }
