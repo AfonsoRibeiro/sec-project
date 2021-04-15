@@ -5,13 +5,19 @@ use security::key_management::{
     ClientKeys,
     retrieve_client_keys,
     retrieve_server_keys,
+    retrieve_server_public_keys,
 };
 
 use sodiumoxide::crypto::sign;
+use sodiumoxide::crypto::box_;
 
 
 const KEYS_DIR : &str = "../security/keys";
 const GRID_FILE : &str = "../grid/grid.txt";
+
+pub fn make_thread_safe() {
+    sodiumoxide::init().expect("Unhable to make it thread safe");
+}
 
 pub fn get_timeline() -> Arc<Timeline> {
     Arc::new(retrieve_timeline(GRID_FILE).expect("Failed to retrieve timeline"))
@@ -26,6 +32,6 @@ pub fn get_pub_sign_key(idx : usize) -> sign::PublicKey  {
     *server_keys.client_sign_key(idx).unwrap()
 }
 
-pub fn setup_reporting() {
-    sodiumoxide::init().expect("Unable to make sodiumoxide thread safe");
+pub fn get_pub_server_key() -> box_::PublicKey {
+    retrieve_server_public_keys(KEYS_DIR).unwrap().public_key()
 }

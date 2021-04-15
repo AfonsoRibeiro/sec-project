@@ -94,7 +94,7 @@ async fn reports_generator(
             println!("Client {:} unable to generate report for epoch {:}.", idx, epoch);
         }
     } else {
-        print!("Error: reports_generator! (Should never happen)");
+        println!("Error: reports_generator! (Should never happen)");
     }
 }
 
