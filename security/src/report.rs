@@ -189,11 +189,11 @@ mod tests {
 
         let report = Report::new(EPOCH, LOC, IDX_REQ, idxs_ass, proofs);
 
-        let (sign_pk, sign_sk) = sign::gen_keypair();
+        let (_, sign_sk) = sign::gen_keypair();
         let (server_pk, _) = box_::gen_keypair();
         let (_, fake_server_sk) = box_::gen_keypair();
 
-        let (cipherinfo, cipherreport, key) = encode_report(&sign_sk, &server_pk, &report, IDX_REQ);
+        let (cipherinfo, _, _) = encode_report(&sign_sk, &server_pk, &report, IDX_REQ);
 
         let info = decode_info(&fake_server_sk, &server_pk, &cipherinfo);
 

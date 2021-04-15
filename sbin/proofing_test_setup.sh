@@ -35,7 +35,7 @@ gnome-terminal -- ./target/$dir/single_server --server $server_addr --size $grid
 
 echo "Starting Clients"
 echo
-for ((idx=0;idx<n_points;idx++))
+for ((idx=0;idx<n_points-1;idx++))
 do
     gnome-terminal -- ./target/$dir/client --server $server_url --id $idx --grid $grid_file --keys $keys_dir
 done
