@@ -6,7 +6,7 @@ use sodiumoxide::crypto::sealedbox;
 use color_eyre::eyre::Result;
 use eyre::eyre;
 
-#[derive(Debug,Serialize,Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct Report {
     epoch : usize,
     loc : (usize,usize),
@@ -32,7 +32,7 @@ impl Report {
 }
 
 
-#[derive(Debug,Serialize,Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ReportInfo {
     idx : usize,
     key : secretbox::Key,
@@ -112,4 +112,92 @@ pub fn success_report(
     } else {
         false
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const EPOCH : usize = 10;
+    const IDX_REQ : usize = 5;
+    const LOC : (usize, usize) = (3, 6);
+
+    #[test]
+    fn create_report() {
+        let idxs_ass : Vec<usize> = vec![1, 3, 7];
+        let proofs : Vec<Vec<u8>> = vec![b"proof1".to_vec(), b"proof2".to_vec(), b"proof3".to_vec()];
+
+        let report = Report::new(EPOCH, LOC, IDX_REQ, idxs_ass.clone(), proofs.clone());
+
+        let id_proofs : Vec<(usize ,Vec<u8>)> = idxs_ass.iter().map(|&id| id).zip(proofs).collect();
+
+        assert_eq!(EPOCH, report.epoch());
+        assert_eq!(IDX_REQ, report.idx());
+        assert_eq!(LOC, report.loc());
+        assert_eq!(id_proofs, *report.proofs());
+    }
+
+    #[test]
+    fn encode_decode_report() {
+        let idxs_ass : Vec<usize> = vec![1, 3, 7];
+        let proofs : Vec<Vec<u8>> = vec![b"proof1".to_vec(), b"proof2".to_vec(), b"proof3".to_vec()];
+
+        let report = Report::new(EPOCH, LOC, IDX_REQ, idxs_ass, proofs);
+
+        let (sign_pk, sign_sk) = sign::gen_keypair();
+        let (server_pk, server_sk) = box_::gen_keypair();
+
+        let (cipherinfo, cipherreport, key) = encode_report(&sign_sk, &server_pk, &report, IDX_REQ);
+
+        let info = decode_info(&server_sk, &server_pk, &cipherinfo);
+
+        assert!(info.is_ok());
+
+        let dec_report = decode_report(&sign_pk, &key, &cipherreport, info.unwrap().nonce());
+
+        assert!(dec_report.is_ok());
+
+        assert_eq!(report, dec_report.unwrap().0);
+    }
+
+    #[test]
+    fn encode_decode_report_fail() {
+        let idxs_ass : Vec<usize> = vec![1, 3, 7];
+        let proofs : Vec<Vec<u8>> = vec![b"proof1".to_vec(), b"proof2".to_vec(), b"proof3".to_vec()];
+
+        let report = Report::new(EPOCH, LOC, IDX_REQ, idxs_ass, proofs);
+
+        let (_, sign_sk) = sign::gen_keypair();
+        let (fake_sign_pk, _) = sign::gen_keypair();
+        let (server_pk, server_sk) = box_::gen_keypair();
+
+        let (cipherinfo, cipherreport, key) = encode_report(&sign_sk, &server_pk, &report, IDX_REQ);
+
+        let info = decode_info(&server_sk, &server_pk, &cipherinfo);
+
+        assert!(info.is_ok());
+
+        let dec_report = decode_report(&fake_sign_pk, &key, &cipherreport, info.unwrap().nonce());
+
+        assert!(dec_report.is_err());
+    }
+
+    #[test]
+    fn encode_decode_report_info_fail() {
+        let idxs_ass : Vec<usize> = vec![1, 3, 7];
+        let proofs : Vec<Vec<u8>> = vec![b"proof1".to_vec(), b"proof2".to_vec(), b"proof3".to_vec()];
+
+        let report = Report::new(EPOCH, LOC, IDX_REQ, idxs_ass, proofs);
+
+        let (sign_pk, sign_sk) = sign::gen_keypair();
+        let (server_pk, _) = box_::gen_keypair();
+        let (_, fake_server_sk) = box_::gen_keypair();
+
+        let (cipherinfo, cipherreport, key) = encode_report(&sign_sk, &server_pk, &report, IDX_REQ);
+
+        let info = decode_info(&fake_server_sk, &server_pk, &cipherinfo);
+
+        assert!(info.is_err());
+    }
+
 }

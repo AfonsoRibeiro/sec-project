@@ -6,8 +6,8 @@ use color_eyre::eyre::{Context, Result};
 use serde_derive::{Deserialize, Serialize};
 
 // Grid simulated thru a single vector
-#[derive(Debug, Deserialize, Serialize)]
-struct Grid {
+#[derive(Debug, Deserialize, Serialize, PartialEq)]
+pub struct Grid {
     grid : Vec<HashSet<usize>>,
     total_size : usize,
     size : usize,
@@ -88,7 +88,7 @@ impl Grid {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, PartialEq)]
 pub struct Timeline {
     timeline : Vec<Grid>,
 
@@ -154,7 +154,7 @@ impl Timeline {
     }
 
     pub fn get_index_at_epoch(&self, point : usize, epoch : usize) -> Option<usize> {
-        if epoch >= self.epochs { return None; }
+        if epoch >= self.epochs || !self.routes.contains_key(&point) { return None; }
 
         Some(self.routes[&point][epoch])
     }
@@ -164,7 +164,7 @@ impl Timeline {
     }
 
     pub fn get_location_at_epoch(&self, point : usize, epoch : usize) -> Option<(usize, usize)> {
-        if epoch >= self.epochs { return None; }
+        if epoch >= self.epochs || !self.routes.contains_key(&point) { return None; }
 
         Some( self.get_position( self.routes[&point][epoch] ) )
     }
@@ -187,4 +187,82 @@ pub fn retrieve_timeline(file_name : &str) -> Result<Timeline> {
     Ok(serde_json::from_reader(reader).wrap_err_with(
         || format!("Failed to parse struct Timeline from file '{:}'", file_name)
     )? )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const SIZE : usize = 10;
+    const POINTS : usize = 1000;
+    const EPOCHS : usize = 10;
+    const PATH : &str = "grid.txt";
+
+    #[test]
+    fn new_grid() {
+        let grid = Grid::new_empty(SIZE);
+        assert_eq!(SIZE, grid.size);
+        assert_eq!(SIZE*SIZE, grid.total_size);
+
+        for square in grid.grid.iter() {
+            assert_eq!(0, square.len())
+        }
+    }
+
+    #[test]
+    fn new_filled_grid() {
+        let grid = Grid::new_randomly_filled(SIZE, POINTS);
+
+        assert_eq!(SIZE, grid.size);
+        assert_eq!(SIZE*SIZE, grid.total_size);
+
+        let mut n_points = 0;
+        for square in grid.grid.iter() {
+            n_points += square.len();
+        }
+        assert_eq!(POINTS, n_points)
+    }
+
+    #[test]
+    fn get_position() {
+        let grid = Grid::new_randomly_filled(SIZE, POINTS);
+
+        let index = SIZE + 5;
+
+        let (x, y) = grid.get_position(index);
+
+        assert_eq!(5, x);
+        assert_eq!(1, y);
+
+        assert_eq!(index, grid.get_index(x, y));
+    }
+
+    #[test]
+    fn build_timeline() {
+        let timeline = Timeline::create_timeline(SIZE, POINTS, EPOCHS);
+
+        assert_eq!(SIZE, timeline.size);
+
+        assert_eq!(EPOCHS, timeline.epochs());
+    }
+
+    #[test]
+    fn is_point() {
+        let timeline = Timeline::create_timeline(SIZE, POINTS, EPOCHS);
+        assert!(timeline.is_point(POINTS - POINTS/2));
+        assert!(!timeline.is_point(POINTS + POINTS/2));
+    }
+
+    #[test]
+    fn save_retrive_timeline() {
+        let timeline = Timeline::create_timeline(SIZE, POINTS, EPOCHS);
+
+        assert!(save_timeline(PATH, &timeline).is_ok());
+
+        let retrieved_timeline = retrieve_timeline(PATH);
+
+        assert!(retrieved_timeline.is_ok());
+
+        assert_eq!(timeline, retrieved_timeline.unwrap());
+    }
 }

@@ -22,6 +22,7 @@ impl ClientKeys {
         }
     }
 
+    #[allow(dead_code)]
     pub fn sign_key(&self) -> sign::SecretKey { self.sign_key.clone() }
 }
 
@@ -37,6 +38,7 @@ impl HAClientKeys {
         }
     }
 
+    #[allow(dead_code)]
     pub fn sign_key(&self) -> sign::SecretKey { self.private_key.clone() }
 }
 
@@ -51,6 +53,7 @@ impl ServerPublicKey {
             public_key,
         }
     }
+    #[allow(dead_code)]
     pub fn public_key(&self) -> box_::PublicKey { self.public_key.clone() }
 }
 
@@ -77,10 +80,14 @@ impl ServerKeys{
         }
     }
 
+    #[allow(dead_code)]
     pub fn private_key(&self) -> &box_::SecretKey { &self.private_key }
+    #[allow(dead_code)]
     pub fn public_key(&self) -> &box_::PublicKey { &self.public_key }
+    #[allow(dead_code)]
     pub fn ha_public_key(&self) -> &sign::PublicKey { &self.ha_public_key }
 
+    #[allow(dead_code)]
     pub fn client_sign_key(&self, idx : usize) -> Option<&sign::PublicKey> {
         if let Some(sign) = self.client_keys.get(&idx) {
             Some(sign)
@@ -156,6 +163,7 @@ fn save_ha_client_keys(keys_dir : &str, ha_keys : HAClientKeys) -> Result<()> {
     Ok(())
 }
 
+#[allow(dead_code)]
 pub fn retrieve_client_keys(keys_dir : &str, idx : usize) -> Result<ClientKeys> {
     let file = File::open(format!("{:}/client_{:04}.keys", keys_dir, idx))?;
     let reader = BufReader::new(file);
@@ -165,6 +173,7 @@ pub fn retrieve_client_keys(keys_dir : &str, idx : usize) -> Result<ClientKeys> 
     )? )
 }
 
+#[allow(dead_code)]
 pub fn retrieve_server_keys(keys_dir : &str)  -> Result<ServerKeys> {
     let file = File::open(format!("{:}/server.keys", keys_dir))?;
     let reader = BufReader::new(file);
@@ -174,6 +183,7 @@ pub fn retrieve_server_keys(keys_dir : &str)  -> Result<ServerKeys> {
     )? )
 }
 
+#[allow(dead_code)]
 pub fn retrieve_server_public_keys(keys_dir : &str) -> Result<ServerPublicKey> {
     let file = File::open(format!("{:}/server_public.keys", keys_dir))?;
     let reader = BufReader::new(file);
@@ -183,6 +193,7 @@ pub fn retrieve_server_public_keys(keys_dir : &str) -> Result<ServerPublicKey> {
     )? )
 }
 
+#[allow(dead_code)]
 pub fn retrieve_ha_client_keys(keys_dir : &str) -> Result<HAClientKeys> {
     let file = File::open(format!("{:}/ha_client.keys", keys_dir))?;
     let reader = BufReader::new(file);

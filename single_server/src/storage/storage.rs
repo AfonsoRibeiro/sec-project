@@ -7,9 +7,7 @@ use eyre::{eyre, Context};
 use color_eyre::eyre::Result;
 use sodiumoxide::crypto::secretbox::Nonce;
 
-use atomicwrites::{AtomicFile, AllowOverwrite, move_atomic, replace_atomic};
-
-use crate::server;
+use atomicwrites::{AtomicFile, AllowOverwrite};
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Report {
@@ -43,7 +41,7 @@ impl Grid {
     }
 
     fn add_user_location(&self, pos_x : usize, pos_y : usize, idx : usize) {
-        self.grid[pos_x][pos_y].write().unwrap().insert(idx); 
+        self.grid[pos_x][pos_y].write().unwrap().insert(idx);
     }
 
     fn get_users_at_location(&self, pos_x : usize, pos_y : usize) ->Vec<usize> {
@@ -104,13 +102,13 @@ impl Timeline {
             }
         }
         {
-            let mut vec = self.timeline.write().map_err(|_| eyre!("Unable to write"))?; 
+            let mut vec = self.timeline.write().map_err(|_| eyre!("Unable to write"))?;
 
             for _ in vec.len()..=epoch {
                 vec.push(Grid::new_empty(self.size));
             }
         }
-        let vec = self.timeline.read().map_err(|_| eyre!("Unable to read"))?; 
+        let vec = self.timeline.read().map_err(|_| eyre!("Unable to read"))?;
         vec[epoch].add_user_location(pos_x, pos_y, idx);
         Ok(())
     }
