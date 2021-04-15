@@ -5,7 +5,7 @@ users have no encryption, shoud the requester just put the id alongside the proo
 TODO:
  - if time improve readability of security (TODO create new struct with no id for ha_client)
 
- - server needs to store the state -> 2 Files 
+ - server needs to store the state -> 2 Files
 
  - client comunitcation need integrity | not sure yet
 
