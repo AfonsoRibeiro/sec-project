@@ -52,7 +52,7 @@ async fn read_commands(grid_size : usize, server : Uri, ha_keys : &HAClientKeys,
 
     loop {
         buffer.clear();
-        reader.read_line(&mut buffer).await.unwrap(); // Trusting io (don know if it works with > )
+        reader.read_line(&mut buffer).await.unwrap();
         {
             if let Some(cap) = o_rep_pat.captures(buffer.trim_end()) {
                 let id  = cap[2].parse::<usize>();

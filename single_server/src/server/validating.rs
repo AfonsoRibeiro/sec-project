@@ -1,7 +1,7 @@
 
 use color_eyre::eyre::Result;
 
-use std::{convert::TryFrom, sync::Arc};
+use std::sync::Arc;
 
 use crate::storage::{Timeline,save_storage};
 
@@ -16,7 +16,6 @@ use security::proof::verify_proof;
 use security::report::{decode_info, decode_report};
 use security::status::{decode_loc_report, encode_loc_response};
 
-use sodiumoxide::crypto::box_;
 use sodiumoxide::crypto::secretbox;
 
 pub struct MyLocationStorage {
@@ -32,22 +31,6 @@ impl MyLocationStorage {
             server_keys,
             f_line
         }
-    }
-
-    fn parse_valid_idx(&self, idx : u64) -> Result<usize, Status> {
-        let res_idx = usize::try_from(idx);
-        if res_idx.is_err() {
-            return Err(Status::invalid_argument(format!("Not a valid id: {:}.", idx)));
-        }
-        Ok(res_idx.unwrap())
-    }
-
-    fn parse_valid_epoch(&self, epoch : u64) -> Result<usize, Status> {
-        let res_epoch = usize::try_from(epoch);
-        if res_epoch.is_err() {
-            return Err(Status::invalid_argument(format!("Not a valid epoch: {:}.", epoch)));
-        }
-        Ok(res_epoch.unwrap())
     }
 
     fn check_valid_location_report(&self, req_idx : usize, report : &Report) -> bool {

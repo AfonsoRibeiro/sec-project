@@ -77,7 +77,7 @@ pub fn decode_info(
     cipherinfo : &Vec<u8>,
 ) -> Result<ReportInfo> {
 
-    let decoded_info = sealedbox::open(cipherinfo, ourpk, oursk).unwrap(); //TODO: fix unwrap
+    let decoded_info = sealedbox::open(cipherinfo, ourpk, oursk).map_err(|_| eyre!("decode_info: Unable to open sealbox"))?; 
     let info = serde_json::from_slice(&decoded_info)?;
 
     Ok(info)
@@ -115,9 +115,8 @@ pub fn decode_loc_report(
     nonce : &secretbox::Nonce,
 ) -> Result<LocationReportRequest> {
 
-    let decoded_report = secretbox::open(cipherreport, nonce, sim_key).unwrap(); //TODO: fix unwrap
-
-    let report = sign::verify(&decoded_report,signpk).unwrap(); //TODO: fix unwrap
+    let decoded_report = secretbox::open(cipherreport, nonce, sim_key).map_err(|_| eyre!("decode_loc_report: Unable to open secretbox"))?; 
+    let report = sign::verify(&decoded_report,signpk).map_err(|_| eyre!("decode_loc_report: Unable to verify signature"))?; 
 
     let report = serde_json::from_slice(&report)?;
 
@@ -145,7 +144,7 @@ pub fn decode_response_location(
     cyphertext : &Vec<u8>,
 ) -> Result<LocationReportResponse> {
     if let Some(nonce) = secretbox::Nonce::from_slice(nonce) {
-        let decoded_response = secretbox::open(cyphertext, &nonce, key).unwrap(); //TODO: fix unwrap
+        let decoded_response = secretbox::open(cyphertext, &nonce, key).map_err(|_| eyre!("decode_response_location: Unable to open secretbox"))?; 
         let response = serde_json::from_slice(&decoded_response)?;
         Ok(response)
     } else {
@@ -184,9 +183,8 @@ pub fn decode_users_at_loc_report(
     nonce : &secretbox::Nonce,
 ) -> Result<UsersAtLocationRequest> {
 
-    let decoded_report = secretbox::open(cipherreport, nonce, sim_key).unwrap(); //TODO: fix unwrap
-
-    let report = sign::verify(&decoded_report,signpk).unwrap(); //TODO: fix unwrap
+    let decoded_report = secretbox::open(cipherreport, nonce, sim_key).map_err(|_| eyre!("decode_users_at_loc_report: Unable to open secretbox"))?; 
+    let report = sign::verify(&decoded_report,signpk).map_err(|_| eyre!("decode_users_at_loc: Unable to verify signature"))?; 
 
     let report = serde_json::from_slice(&report)?;
 
@@ -214,7 +212,7 @@ pub fn decode_users_at_loc_response(
     cyphertext : &Vec<u8>,
 ) -> Result<UsersAtLocationResponse> {
     if let Some(nonce) = secretbox::Nonce::from_slice(nonce) {
-        let decoded_response = secretbox::open(cyphertext, &nonce, key).unwrap(); //TODO: fix unwrap
+        let decoded_response = secretbox::open(cyphertext, &nonce, key).map_err(|_| eyre!("decode_users_at_loc_response: Unable to open secretbox"))?; 
         let response = serde_json::from_slice(&decoded_response)?;
         Ok(response)
     } else {

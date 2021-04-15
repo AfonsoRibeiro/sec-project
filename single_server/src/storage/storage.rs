@@ -39,11 +39,11 @@ impl Grid {
     }
 
     fn add_user_location(&self, pos_x : usize, pos_y : usize, idx : usize) {
-        self.grid[pos_x][pos_y].write().unwrap().insert(idx); //fix unwrap
+        self.grid[pos_x][pos_y].write().unwrap().insert(idx); 
     }
 
     fn get_users_at_location(&self, pos_x : usize, pos_y : usize) ->Vec<usize> {
-        self.grid[pos_x][pos_y].read().unwrap().iter().map(|&idx| idx).collect() //fix unwrap
+        self.grid[pos_x][pos_y].read().unwrap().iter().map(|&idx| idx).collect()
     }
 }
 
@@ -72,9 +72,12 @@ impl Timeline {
         }
     }
 
-    pub fn add_user_location_at_epoch(&self, epoch: usize, (pos_x, pos_y) : (usize, usize), idx: usize, report : Vec<u8>) -> Result<()>{ //TODO: check if it is valid -> report
+    pub fn add_user_location_at_epoch(&self, epoch: usize, (pos_x, pos_y) : (usize, usize), idx: usize, report : Vec<u8>) -> Result<()>{ 
         if self.blacklist.read().unwrap().contains(&idx) {
             return Err(eyre!("Malicious user detected!"));
+        }
+        if !self.valid_pos(pos_x, pos_y){
+            return Err(eyre!("Invalid position"));
         }
         {
             let mut routes = self.routes.write().unwrap();
@@ -97,13 +100,13 @@ impl Timeline {
             }
         }
         {
-            let mut vec = self.timeline.write().unwrap(); // Fix this : dont assume this
+            let mut vec = self.timeline.write().map_err(|_| eyre!("Unable to write"))?; 
 
             for _ in vec.len()..=epoch {
                 vec.push(Grid::new_empty(self.size));
             }
         }
-        let vec = self.timeline.read().unwrap();
+        let vec = self.timeline.read().map_err(|_| eyre!("Unable to read"))?; 
         vec[epoch].add_user_location(pos_x, pos_y, idx);
         Ok(())
     }
@@ -121,7 +124,7 @@ impl Timeline {
     }
 
     pub fn get_users_at_epoch_at_location(&self, epoch: usize, (pos_x, pos_y) : (usize, usize)) -> Option<Vec<usize>> {
-        let vec = self.timeline.read().unwrap();  // Fix this : dont assume this
+        let vec = self.timeline.read().unwrap();
 
         if vec.len() > epoch && self.valid_pos(pos_x, pos_y){
             Some(vec[epoch].get_users_at_location(pos_x,pos_y))

@@ -3,7 +3,6 @@ use color_eyre::eyre::Result;
 use status::encode_location_report;
 
 use std::sync::Arc;
-use std::convert::TryFrom;
 use tonic::transport::Uri;
 
 use grid::grid::Timeline;
@@ -13,7 +12,7 @@ use protos::location_storage::location_storage_client::LocationStorageClient;
 
 use sodiumoxide::crypto::sign;
 use sodiumoxide::crypto::box_;
-use security::status::{self, LocationReportRequest, LocationReportResponse};
+use security::status::{self, LocationReportRequest};
 use security::report::{self, Report, success_report};
 
 

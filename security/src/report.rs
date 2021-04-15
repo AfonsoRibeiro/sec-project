@@ -4,6 +4,7 @@ use sodiumoxide::crypto::box_;
 use sodiumoxide::crypto::secretbox;
 use sodiumoxide::crypto::sealedbox;
 use color_eyre::eyre::Result;
+use eyre::eyre;
 
 #[derive(Debug,Serialize,Deserialize)]
 pub struct Report {
@@ -80,7 +81,7 @@ pub fn decode_info(
     cipherinfo : &Vec<u8>,
 ) -> Result<ReportInfo> {
 
-    let decoded_info = sealedbox::open(cipherinfo, ourpk, oursk).unwrap(); //TODO: fix unwrap
+    let decoded_info = sealedbox::open(cipherinfo, ourpk, oursk).map_err(|_| eyre!("decode_info: Unable to open sealedbox"))?; 
     let info = serde_json::from_slice(&decoded_info)?;
 
     Ok(info)
@@ -93,9 +94,8 @@ pub fn decode_report(
     nonce : &secretbox::Nonce,
 ) -> Result<Report> {
 
-    let decoded_report = secretbox::open(cipherreport, nonce, sim_key).unwrap(); //TODO: fix unwrap
-
-    let report = sign::verify(&decoded_report,signpk).unwrap(); //TODO: fix unwrap
+    let decoded_report = secretbox::open(cipherreport, nonce, sim_key).map_err(|_| eyre!("decoded_report: Unable to open secretbox"))?; 
+    let report = sign::verify(&decoded_report,signpk).map_err(|_| eyre!("decoded_report: Unable to verify report"))?; 
 
     let report = serde_json::from_slice(&report)?;
 

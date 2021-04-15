@@ -1,7 +1,6 @@
 use serde_derive::{Deserialize, Serialize};
 use sodiumoxide::crypto::sign::{self, PublicKey, SecretKey};
 use color_eyre::eyre::{Result, Context};
-use eyre::eyre;
 
 #[derive(Debug,Serialize,Deserialize)]
 pub struct Proof {

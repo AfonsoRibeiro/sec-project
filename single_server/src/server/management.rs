@@ -1,7 +1,7 @@
 use color_eyre::eyre::Result;
 use security::key_management::ServerKeys;
 
-use std::{convert::TryFrom, sync::Arc};
+use std::sync::Arc;
 
 use tonic::{Request, Response, Status};
 
@@ -12,7 +12,7 @@ use protos::location_master::{ObtainLocationReportRequest, ObtainLocationReportR
 use crate::storage::Timeline;
 
 use security::report::decode_info;
-use security::status::{decode_loc_report, encode_loc_response, decode_users_at_loc_report, encode_users_at_location_report, encode_users_at_loc_response};
+use security::status::{decode_loc_report, encode_loc_response, decode_users_at_loc_report, encode_users_at_loc_response};
 
 pub struct MyLocationMaster {
     storage : Arc<Timeline>,
@@ -25,25 +25,6 @@ impl MyLocationMaster {
             storage,
             server_keys,
         }
-    }
-
-    fn parse_valid_epoch(&self, epoch : u64) -> Result<usize, Status> {
-        let res_epoch = usize::try_from(epoch);
-        if res_epoch.is_err() /*|| self.timeline.epochs() <= result_req_epoch.unwrap()*/ {
-            return Err(Status::invalid_argument(format!("Not a valid epoch: {:}.", epoch)));
-        }
-        Ok(res_epoch.unwrap())
-    }
-
-    fn parse_valid_pos(&self, x : u64, y : u64) -> Result<(usize, usize), Status> {
-        let (res_x, res_y) = (usize::try_from(x), usize::try_from(y));
-        if res_x.is_err() /* || check limits */ {
-            return Err(Status::invalid_argument(format!("Not a valid x position: {:}.", x)));
-        }
-        if res_y.is_err() /* || check limits */ {
-            return Err(Status::invalid_argument(format!("Not a valid y position: {:}.", y)));
-        }
-        Ok((res_x.unwrap(), res_y.unwrap()))
     }
 }
 

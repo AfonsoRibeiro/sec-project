@@ -1,7 +1,6 @@
 mod server;
 mod storage;
 
-use eyre::eyre;
 use color_eyre::eyre::Result;
 use structopt::StructOpt;
 

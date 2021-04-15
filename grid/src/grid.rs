@@ -86,15 +86,6 @@ impl Grid {
 
         min_n
     }
-
-    // fn find_point(&self, point : usize) -> Option<(usize, usize)> {
-    //     for (index, pos) in self.grid.iter().enumerate() {
-    //         if pos.contains(&point) {
-    //             return Some(self.get_position(index));
-    //         }
-    //     }
-    //     None
-    // }
 }
 
 #[derive(Debug, Deserialize, Serialize)]
