@@ -56,3 +56,13 @@ To run the script:
 `./sbin/launch_system.sh`
 
 If you desire to run everything on your own, you can start the server by: `./target/debug/single-server --fline <fline> --keys <keys> --server <server> --size <size> --storage <storage>` and then start each one of the clients individually.
+
+Each client is able to obtain his location report with the command:
+
+`report <epoch>` (the ha client is able to obtain everyones reports)
+
+The ha client has another command besides the one mentioned previously, which allows him to obtain the list of users at a position:
+
+`users <epoch> <pos_x> <pos_y>`
+
+

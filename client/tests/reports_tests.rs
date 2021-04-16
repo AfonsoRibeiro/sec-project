@@ -129,10 +129,10 @@ pub async fn submit_bad_location_report () {
     let sever_key = common::get_pub_server_key();
 
     let timeline = common::get_timeline();
-    if let Some((loc_x, loc_y)) = timeline.get_location_at_epoch(IDX, EPOCH) {
+    if let Some((_, loc_y)) = timeline.get_location_at_epoch(IDX, EPOCH) {
         let (proofs, idxs_ass) = proofing_system::get_proofs(timeline, IDX, EPOCH).await;
         if proofs.len() > 0 && proofs.len() == idxs_ass.len() {
-            let report = Report::new(EPOCH, ((loc_x+2)%SIZE, (loc_y+2)%SIZE), IDX, idxs_ass, proofs);
+            let report = Report::new(EPOCH, (SIZE, loc_y), IDX, idxs_ass, proofs);
             assert!(
                 reports::submit_location_report(
                     IDX,
@@ -140,7 +140,7 @@ pub async fn submit_bad_location_report () {
                     server_url.clone(),
                     client_keys.sign_key(),
                     sever_key,
-                ).await.is_ok()
+                ).await.is_err()
             );
 
         } else {
