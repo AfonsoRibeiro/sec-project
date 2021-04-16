@@ -7,12 +7,10 @@ use security::key_management::{
     ClientKeys,
     HAClientKeys,
     retrieve_client_keys,
-    retrieve_server_keys,
     retrieve_server_public_keys,
     retrieve_ha_client_keys,
 };
 
-use sodiumoxide::crypto::sign;
 use sodiumoxide::crypto::box_;
 
 const KEYS_DIR : &str = "../security/keys";
@@ -28,11 +26,6 @@ pub fn get_timeline() -> Arc<Timeline> {
 
 pub fn get_client_keys(idx : usize) -> Arc<ClientKeys> {
     Arc::new(retrieve_client_keys(KEYS_DIR, idx).expect("Failed to retrieve sign key"))
-}
-
-pub fn get_pub_sign_key(idx : usize) -> sign::PublicKey  {
-    let server_keys = retrieve_server_keys(KEYS_DIR).expect("Unhable to get server keys");
-    *server_keys.client_sign_key(idx).unwrap()
 }
 
 pub fn get_pub_server_key() -> box_::PublicKey {

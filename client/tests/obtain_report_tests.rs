@@ -14,7 +14,6 @@ use std::time::Duration;
 const IDX : usize = 19;
 const NOT_MINE_IDX : usize = 17;
 const EPOCH : usize = 0;
-const SIZE : usize = 3;
 const N_EPOCHS : usize = 10;
 
 #[tokio::test]
