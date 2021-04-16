@@ -1,10 +1,8 @@
 #!/usr/bin/env bash
 
-n_points=20
-grid_size=3
+n_points=500
+grid_size=5
 epochs=10
-
-f_line=2
 
 grid_file="grid/grid.txt"
 keys_dir="security/keys"
@@ -35,7 +33,7 @@ gnome-terminal -- ./target/$dir/single_server --server $server_addr --size $grid
 
 echo "Starting Clients"
 echo
-for ((idx=0;idx<n_points;idx++))
+for ((idx=0;idx<n_points-1;idx++))
 do
     gnome-terminal -- ./target/$dir/client --server $server_url --id $idx --grid $grid_file --keys $keys_dir
 done

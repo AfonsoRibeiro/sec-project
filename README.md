@@ -23,12 +23,18 @@ The system directories are organized as follows:
 
 `cargo build`
 
-## Running unit testing(incomplete)
-`cargo test -p client --test proofing_system_tests -- --ignored`
+## Running unit testing
+cargo test
 
-## Running bizantine client tests
-The bizantine user test requires the test name, so you'll need to run one at a time. 
+## Running integration tests
+lauch system first:
+./sbin/integration_tests_setup.sh
+cargo test -p client -p ha_client --test proofing_system_tests --test obtain_report_tests -- --ignored
 
+## Running report related integration tests
+The bizantine user test requires the test name, so you'll need to run one at a time, restarting the system first.
+
+./sbin/reports_test_setup.sh
 `cargo test -p client <test_name> -- --ignored`
 
 

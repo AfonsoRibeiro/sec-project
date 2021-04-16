@@ -12,7 +12,6 @@ use std::iter::FromIterator;
 const IDX : usize = 19;
 const EPOCH : usize = 1;
 const SIZE : usize = 3;
-const N_EPOCHS : usize = 10;
 
 #[tokio::test]
 #[ignore]
@@ -183,6 +182,8 @@ pub async fn submit_only_my_proof_report () {
     }
 }
 
+#[tokio::test]
+#[ignore]
 pub async fn submit_not_enough_proofs_report () {
     let server_url : Uri = Uri::from_static("http://[::1]:50051");
 

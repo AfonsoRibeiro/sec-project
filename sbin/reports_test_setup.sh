@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
+#launches all clients except with id 19 (used for testing)
+
 n_points=20
 grid_size=3
 epochs=10
-
-f_line=2
 
 grid_file="grid/grid.txt"
 keys_dir="security/keys"
@@ -39,7 +39,3 @@ for ((idx=0;idx<n_points-1;idx++))
 do
     gnome-terminal -- ./target/$dir/client --server $server_url --id $idx --grid $grid_file --keys $keys_dir
 done
-
-echo "Starting ha_client"
-echo
-./target/$dir/ha_client --keys $keys_dir
