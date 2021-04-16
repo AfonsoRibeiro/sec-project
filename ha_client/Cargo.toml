@@ -16,3 +16,6 @@ protos = { path = "../protos" }
 security = { path = "../security" }
 regex = "1.4"
 sodiumoxide = "0.2.6"
+
+[dev-dependencies]
+grid = { path = "../grid" }

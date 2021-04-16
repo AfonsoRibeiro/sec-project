@@ -4,7 +4,7 @@ mod common;
 
 use client::{proofing_system, reports};
 use security::report::Report;
-use security::proof::{Proof, sign_proof, verify_proof};
+use security::proof::{Proof, sign_proof};
 use tonic::transport::Uri;
 
 use std::iter::FromIterator;

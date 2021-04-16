@@ -27,9 +27,8 @@ The system directories are organized as follows:
 cargo test
 
 ## Running integration tests
-lauch system first:
 ./sbin/integration_tests_setup.sh
-cargo test -p client -p ha_client --test proofing_system_tests --test obtain_report_tests -- --ignored
+cargo test -p client -p ha_client --test proofing_system_tests --test obtain_report_tests --test verifying_tests -- --ignored
 
 ## Running report related integration tests
 The bizantine user test requires the test name, so you'll need to run one at a time, restarting the system first.
@@ -42,7 +41,7 @@ The bizantine user test requires the test name, so you'll need to run one at a t
 
 All binaries will be in `./target/debug/`
 
-It is possible to run each binary on its own, by using the name followed by -h to see the options, however if you do this the server needs to be started first. 
+It is possible to run each binary on its own, by using the name followed by -h to see the options, however if you do this the server needs to be started first.
 To avoid that tedious process you can use the script launch\_system.sh that starts the server and a number of clients. The script uses the gnome-terminal but if for some reason that is not your default terminal the only thing you need to do is change the terminal name in the script.
 
 To run the script:
