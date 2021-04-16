@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-n_points=500
+n_points=50
 grid_size=5
 epochs=10
 

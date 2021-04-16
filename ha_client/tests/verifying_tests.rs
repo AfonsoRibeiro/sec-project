@@ -147,7 +147,8 @@ pub async fn get_users_at_location_at_epoch () {
             POS_X,
             POS_Y,
             server_url,
-            &ha_client_keys.sign_key(), &server_key
+            &ha_client_keys.sign_key(),
+            &server_key
         ).await;
 
     assert!(users_res.is_ok());
@@ -159,4 +160,73 @@ pub async fn get_users_at_location_at_epoch () {
     for idx in users.into_iter() { // check if all ids match
         assert!(users_res.iter().any(|&id| id == idx));
     }
+}
+
+#[tokio::test]
+#[ignore]
+pub async fn get_users_bad_location () {
+    let server_url : Uri = Uri::from_static("http://[::1]:50051");
+
+    common::make_thread_safe();
+
+    let ha_client_keys = common::get_ha_client_keys();
+    let server_key = common::get_pub_server_key();
+
+    let users_res =
+        obtain_users_at_location(
+            EPOCH,
+            GRID_SIZE,
+            POS_Y,
+            server_url,
+            &ha_client_keys.sign_key(),
+            &server_key
+        ).await;
+
+    assert!(users_res.is_err());
+}
+
+#[tokio::test]
+#[ignore]
+pub async fn get_users_not_existent_epoch () {
+    let server_url : Uri = Uri::from_static("http://[::1]:50051");
+
+    common::make_thread_safe();
+
+    let ha_client_keys = common::get_ha_client_keys();
+    let server_key = common::get_pub_server_key();
+
+    let users_res =
+        obtain_users_at_location(
+            N_EPOCHS,
+            POS_X,
+            POS_Y,
+            server_url,
+            &ha_client_keys.sign_key(),
+            &server_key
+        ).await;
+
+    assert!(users_res.is_err());
+}
+
+#[tokio::test]
+#[ignore]
+pub async fn get_users_invalid_signature () {
+    let server_url : Uri = Uri::from_static("http://[::1]:50051");
+
+    common::make_thread_safe();
+
+    let client_keys = common::get_client_keys(IDX);
+    let server_key = common::get_pub_server_key();
+
+    let users_res =
+        obtain_users_at_location(
+            EPOCH,
+            POS_X,
+            POS_Y,
+            server_url,
+            &client_keys.sign_key(),
+            &server_key
+        ).await;
+
+    assert!(users_res.is_err());
 }

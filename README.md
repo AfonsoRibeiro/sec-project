@@ -36,6 +36,11 @@ The bizantine user test requires the test name, so you'll need to run one at a t
 ./sbin/reports_test_setup.sh
 `cargo test -p client <test_name> -- --ignored`
 
+submit_correct_report
+submit_empty_report
+submit_bad_location_report
+submit_only_my_proof_report
+submit_not_enough_proofs_report
 
 ## Running the system
 
