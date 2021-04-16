@@ -1,4 +1,4 @@
-#Highly Dependable Location Tracker - SEC
+# Highly Dependable Location Tracker - SEC
 
 Highly Dependable Location Tracker is a contact tracing system where users prove their location and witness the location of others around them. It is also composed of a client, the ha client that can query the server on any user's location at all times.
 
@@ -24,23 +24,26 @@ The system directories are organized as follows:
 `cargo build`
 
 ## Running unit testing
-cargo test
+`cargo test`
 
 ## Running integration tests
-./sbin/integration_tests_setup.sh
-cargo test -p client -p ha_client --test proofing_system_tests --test obtain_report_tests --test verifying_tests -- --ignored
+`./sbin/integration_tests_setup.sh`
+
+`cargo test -p client -p ha_client --test proofing_system_tests --test obtain_report_tests --test verifying_tests -- --ignored`
 
 ## Running report related integration tests
-The bizantine user test requires the test name, so you'll need to run one at a time, restarting the system first.
+These tests require you to rerun the set up script before running each test.
 
-./sbin/reports_test_setup.sh
+`./sbin/integration_tests_setup.sh`
+
 `cargo test -p client <test_name> -- --ignored`
 
-submit_correct_report
-submit_empty_report
-submit_bad_location_report
-submit_only_my_proof_report
-submit_not_enough_proofs_report
+The test names are:
+* submit_correct_report
+* submit_empty_report
+* submit_bad_location_report
+* submit_only_my_proof_report
+* submit_not_enough_proofs_report
 
 ## Running the system
 
