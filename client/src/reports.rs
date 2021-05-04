@@ -1,18 +1,17 @@
 use eyre::eyre;
 use color_eyre::eyre::Result;
-use status::encode_location_report;
 
 use std::sync::Arc;
 use tonic::transport::Uri;
 
 use grid::grid::Timeline;
 
-use protos::{location_storage::{ObtainLocationReportRequest, SubmitLocationReportRequest}};
+use protos::{location_storage::{ObtainLocationReportRequest, SubmitLocationReportRequest, RequestMyProofsRequest}};
 use protos::location_storage::location_storage_client::LocationStorageClient;
 
 use sodiumoxide::crypto::sign;
 use sodiumoxide::crypto::box_;
-use security::status::{self, LocationReportRequest};
+use security::status::{self, LocationReportRequest, MyProofsRequest, decode_my_proofs_response, decode_response_location, encode_location_report, encode_my_proofs_request};
 use security::report::{self, Report, success_report};
 
 
@@ -70,7 +69,7 @@ pub async fn obtain_location_report(
     let loc = match client.obtain_location_report(request).await {
         Ok(response) => {
             let response = response.get_ref();
-            if let Ok(x) = status::decode_response_location(&key, &response.nonce, &response.location) {
+            if let Ok(x) = decode_response_location(&key, &response.nonce, &response.location) {
                 x
             } else {
                 return Err(eyre!("obtain_location_report unable to validate server response "));
@@ -86,4 +85,40 @@ pub async fn obtain_location_report(
     } else {
         Err(eyre!("Response : Not a valid position (x : {:}, y : {:})", x, y))
     }
+}
+
+pub async fn request_my_proofs(
+    idx : usize,
+    epochs : Vec<usize>,
+    url : Uri,
+    sign_key : sign::SecretKey,
+    server_key : box_::PublicKey,
+) -> Result<()> {
+
+    let proofs_req = MyProofsRequest::new(epochs);
+    let (user_info, epochs, key) = encode_my_proofs_request(&sign_key, &server_key, &proofs_req, idx);
+
+    let mut client = LocationStorageClient::connect(url).await?;
+
+    let request = tonic::Request::new(RequestMyProofsRequest {
+        epochs,
+        user_info,
+    });
+
+    let proofs = match client.request_my_proofs(request).await {
+        Ok(response) => {
+            let response = response.get_ref();
+            if let Ok(x) = decode_my_proofs_response(&key, &response.nonce, &response.proofs) {
+                x
+            } else {
+                return Err(eyre!("obtain_location_report unable to validate server response "));
+            }
+        }
+        Err(status) => return Err(eyre!("ObtainLocationReport failed with code {:?} and message {:?}.",
+                            status.code(), status.message())),
+    };
+
+    // TODO do something with proofs
+
+    Ok(())
 }

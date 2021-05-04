@@ -3,18 +3,18 @@ use color_eyre::eyre::Result;
 
 use std::sync::Arc;
 
-use crate::storage::{Timeline,save_storage};
+use crate::storage::{Timeline, save_storage};
 
 use tonic::{Request, Response, Status};
 
-use protos::location_storage::location_storage_server::LocationStorage;
+use protos::location_storage::{RequestMyProofsRequest, RequestMyProofsResponse, location_storage_server::LocationStorage};
 use protos::location_storage::{SubmitLocationReportRequest, SubmitLocationReportResponse,
     ObtainLocationReportRequest, ObtainLocationReportResponse};
 
 use security::{key_management::ServerKeys, report::Report};
 use security::proof::verify_proof;
 use security::report::{decode_info, decode_report};
-use security::status::{decode_loc_report, encode_loc_response};
+use security::status::{decode_loc_report, encode_loc_response, decode_my_proofs_report, encode_my_proofs_response};
 
 use sodiumoxide::crypto::secretbox;
 
@@ -59,6 +59,18 @@ impl MyLocationStorage {
             }
         }
         counter > self.f_line
+    }
+
+    fn correctly_ass_proofs(&self, report : &Report) -> Vec<(usize, usize, Vec<u8>)> { //signed report
+        let mut proofs = vec![];
+        for (idx, ass_proof) in report.proofs() {
+            if let Some(sign_key) = self.server_keys.client_sign_key(*idx) {
+                if let Ok(p) = verify_proof(&sign_key, &ass_proof) {
+                    proofs.push((*idx, p.epoch(), ass_proof.clone()))
+                }
+            }
+        }
+        proofs
     }
 }
 
@@ -109,6 +121,7 @@ impl LocationStorage for MyLocationStorage {
         if self.check_valid_location_report(info.idx(), &report) {
             match self.storage.add_user_location_at_epoch(report.epoch(), report.loc(), info.idx(), signed_rep) {
                 Ok(_) => {
+                    self.storage.add_proofs(self.correctly_ass_proofs(&report));
                     if let Ok(_) = save_storage(self.storage.filename(), &self.storage).await {
                         let nonce = secretbox::gen_nonce();
                         Ok( Response::new(SubmitLocationReportResponse {
@@ -139,7 +152,7 @@ impl LocationStorage for MyLocationStorage {
             &request.user_info) {
             info
         } else {
-            return Err(Status::permission_denied("Unhable to decrept sealed container"));
+            return Err(Status::permission_denied("Unhable to decript sealed container"));
         };
 
         let client_sign_key = if let Some(ck) = self.server_keys.client_sign_key(info.idx()) {
@@ -177,5 +190,53 @@ impl LocationStorage for MyLocationStorage {
             None => Err(Status::not_found(format!("User with id {:} not found at epoch {:}", loc_req.idx(), loc_req.epoch()))),
         }
 
+    }
+
+    async fn request_my_proofs(
+        &self,
+        request : Request<RequestMyProofsRequest>,
+    ) -> Result<Response<RequestMyProofsResponse>, Status> {
+        let request = request.get_ref();
+
+        let info = if let Ok(info) = decode_info(
+            self.server_keys.private_key(),
+            self.server_keys.public_key(),
+            &request.user_info) {
+            info
+        } else {
+            return Err(Status::permission_denied("Unhable to decript sealed container"));
+        };
+
+        let client_sign_key = if let Some(ck) = self.server_keys.client_sign_key(info.idx()) {
+            ck
+        } else {
+            return Err(Status::permission_denied(format!("Unable to find client {:} keys", info.idx())));
+        };
+
+        if !self.storage.valid_nonce(info.idx(), info.nonce()) {
+            return Err(Status::already_exists("nonce already exists"));
+        }
+
+        let proofs_req = match decode_my_proofs_report(
+            client_sign_key,
+            info.key(),
+            &request.epochs,
+            info.nonce(),
+        ) {
+            Ok(location_request) => {
+                if !self.storage.add_nonce(info.idx(), info.nonce().clone()) {
+                    return  Err(Status::permission_denied("nonce already exists"));
+                }
+                location_request
+            }
+            Err(_) => return  Err(Status::permission_denied("Unable to decrypt report"))
+        };
+
+        let (proofs, nonce) = encode_my_proofs_response(info.key(), self.storage.get_proofs(info.idx(), &proofs_req.epochs));
+
+        Ok( Response::new( RequestMyProofsResponse {
+            nonce : nonce.0.to_vec(),
+            proofs,
+        }))
     }
 }

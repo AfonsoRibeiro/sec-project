@@ -130,6 +130,7 @@ async fn read_commands(
     print_command_msg();
 
     let orep_pat = Regex::new(r"r(eport)? [+]?(\d+)").unwrap();
+    let rproofs_pat = Regex::new(r"p(roofs)? [+]?(\d)+( [+]?(\d)+)*").unwrap(); // FIX TODO
 
     let mut reader = BufReader::new(io::stdin());
     let mut buffer = String::new();
@@ -148,6 +149,8 @@ async fn read_commands(
                     Err(err) => println!("{:}", err.to_string()),
                 }
 
+            } if let Some(cap) = rproofs_pat.captures(buffer.trim_end()) {
+                println!("{:?}", cap);
             } else {
                 print_command_msg();
             }

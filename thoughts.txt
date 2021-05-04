@@ -1,18 +1,8 @@
-what happens when client cant get 2*f' + 1 proofs?
-
-users have no encryption, shoud the requester just put the id alongside the proof in report or does it need to be the proofer sending its id so the requester knows it
-
 TODO:
- - if time improve readability of security (TODO create new struct with no id for ha_client)
+    Investigate each algorithm
 
- - server needs to store the state -> 2 Files
+    Have blacklist for each epoch
 
- - client comunitcation need integrity | not sure yet
+    Keystore
 
- - What should a byzantine user try?
-
- - f_max = f' * (size*size - 2*size - 2*(size-2))   | n of squares not on the edge
-
- - normal client pretends he is an ha client
-
- - client asks for a report that is not his
+    which proofs do we save? can there be repeated? Should we save them signed?

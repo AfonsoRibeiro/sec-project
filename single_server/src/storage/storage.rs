@@ -53,6 +53,7 @@ impl Grid {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Timeline {
     routes : RwLock<HashMap<usize, RwLock<HashMap<usize, Report>>>>, //epoch -> user id -> location
+    proofs : RwLock<HashMap<usize, RwLock<HashMap<usize, Vec<Vec<u8>> >>>>, // user -> epoch -> proofs_given
     timeline : RwLock<Vec<Grid>>,
     size : usize,
     blacklist : RwLock<HashSet<usize>>,
@@ -65,6 +66,7 @@ impl Timeline {
     pub fn new(size : usize, filename: String) -> Timeline {
         Timeline {
             routes : RwLock::new(HashMap::new()),
+            proofs : RwLock::new(HashMap::new()),
             timeline : RwLock::new(vec![]),
             size,
             blacklist : RwLock::new(HashSet::new()),
@@ -82,8 +84,8 @@ impl Timeline {
             return Err(eyre!("Invalid position"));
         }
         {
-            let mut routes = self.routes.write().unwrap();
             let report = Report::new((pos_x, pos_y), report);
+            let mut routes = self.routes.write().unwrap();
             if let Some(user_pos) =  routes.get(&epoch) {
                 let mut writable_user_pos = user_pos.write().unwrap();
                 if let Some(report) = writable_user_pos.insert(idx,report) {
@@ -112,6 +114,41 @@ impl Timeline {
         let vec = self.timeline.read().map_err(|_| eyre!("Unable to read"))?;
         vec[epoch].add_user_location(pos_x, pos_y, idx);
         Ok(())
+    }
+
+    pub fn add_proofs(&self, proofs : Vec<(usize, usize, Vec<u8>)>) {
+        let mut p = self.proofs.write().unwrap();
+        for (idx, epoch, proof) in proofs.into_iter() {
+            if let Some(u_proof) = p.get_mut(&idx) {
+                let mut u_proof = u_proof.write().unwrap();
+                if let Some(u_e_proof) = u_proof.get_mut(&epoch) {
+                    u_e_proof.push(proof);
+                } else {
+                    u_proof.insert(epoch, vec![proof]);
+                }
+
+            } else {
+                let mut u_e_proof = HashMap::new();
+                u_e_proof.insert(epoch, vec![proof]);
+
+                p.insert(idx, RwLock::new(u_e_proof));
+            }
+        }
+    }
+
+    pub fn get_proofs(&self, idx : usize, epochs : &Vec<usize>) -> Vec<Vec<u8>> { // Assumes vec is a set
+        let mut proofs = vec![];
+
+        let u_proofs = self.proofs.read().unwrap();
+        if let Some(u_proofs) = u_proofs.get(&idx) {
+            for epoch in epochs {
+                let e_proofs = u_proofs.read().unwrap();
+                if let Some(e_proofs) = e_proofs.get(epoch) {
+                    proofs.extend(e_proofs.iter().map(|proof| proof.clone()));
+                }
+            }
+        }
+        proofs
     }
 
     pub fn valid_pos(&self, x : usize, y : usize) -> bool {

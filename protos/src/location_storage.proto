@@ -5,17 +5,8 @@ package location_storage;
 service LocationStorage {
     rpc SubmitLocationReport (SubmitLocationReportRequest) returns (SubmitLocationReportResponse) {}
     rpc ObtainLocationReport (ObtainLocationReportRequest) returns (ObtainLocationReportResponse) {}
+    rpc RequestMyProofs      (RequestMyProofsRequest)      returns (RequestMyProofsResponse)      {}
 }
-
-// message Report {
-//     repeated bytes proofs = 1;
-//     repeated uint64 idx_ass = 2;
-// }
-
-// message SubmitLocationReportRequest {
-//     Report report = 1;
-//     uint64 idx = 2;
-// }
 
 message SubmitLocationReportRequest { //report is encrypted with idx
     bytes report = 1;
@@ -35,4 +26,14 @@ message ObtainLocationReportRequest {
 message ObtainLocationReportResponse {
     bytes nonce = 1;
     bytes location = 2;
+}
+
+message RequestMyProofsRequest {
+    bytes epochs = 1;
+    bytes user_info = 2;
+}
+
+message RequestMyProofsResponse {
+    bytes nonce = 1;
+    bytes proofs = 2;
 }
