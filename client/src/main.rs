@@ -4,7 +4,7 @@ mod reports;
 use eyre::eyre;
 use color_eyre::eyre::Result;
 
-use std::sync::Arc;
+use std::{collections::HashSet, sync::Arc, usize};
 use structopt::StructOpt;
 use regex::Regex;
 
@@ -25,9 +25,6 @@ use security::{key_management::{
 #[structopt(name = "Client", about = "Reporting and verifying locations since 99.")]
 struct Opt {
 
-    #[structopt(name = "server", long, default_value = "http://[::1]:50051")]
-    server_url : Uri,
-
     #[structopt(name = "id", long)]
     idx : usize,
 
@@ -36,6 +33,9 @@ struct Opt {
 
     #[structopt(name = "keys", long, default_value = "security/keys")]
     keys_dir : String,
+
+    #[structopt(name = "server_max_id", long, default_value = "0")]
+    server_max_id : usize
 }
 
 #[tokio::main]
@@ -58,9 +58,10 @@ async fn main() -> Result<()> {
     let proofer =
         tokio::spawn(proofing_system::start_proofer(opt.idx, timeline.clone(), client_keys.sign_key()));
 
-    tokio::spawn(epochs_generator(timeline.clone(), opt.idx, opt.server_url.clone(), client_keys.clone(), server_keys.clone()));
+    let server_url : Uri = format!("[::1]:500{:02}", opt.server_max_id).parse().unwrap();
+    tokio::spawn(epochs_generator(timeline.clone(), opt.idx, server_url.clone(), client_keys.clone(), server_keys.clone()));
 
-    read_commands(timeline.clone(), opt.idx, opt.server_url, client_keys, server_keys).await;
+    read_commands(timeline.clone(), opt.idx, server_url, client_keys, server_keys).await;
 
     let _x = proofer.await; // Not important result just dont end
 
@@ -130,7 +131,7 @@ async fn read_commands(
     print_command_msg();
 
     let orep_pat = Regex::new(r"r(eport)? [+]?(\d+)").unwrap();
-    let rproofs_pat = Regex::new(r"p(roofs)? [+]?(\d)+( [+]?(\d)+)*").unwrap(); // FIX TODO
+    let rproofs_pat = Regex::new(r"p(roofs)?( [+]?(\d)+)+").unwrap(); // FIX TODO
 
     let mut reader = BufReader::new(io::stdin());
     let mut buffer = String::new();
@@ -149,9 +150,17 @@ async fn read_commands(
                     Err(err) => println!("{:}", err.to_string()),
                 }
 
-            } if let Some(cap) = rproofs_pat.captures(buffer.trim_end()) {
-                println!("{:?}", cap);
-            } else {
+            } if rproofs_pat.is_match(buffer.trim_end()) {
+                let mut epochs = HashSet::new();
+                for epoch in buffer.split(' ') {
+                    if let Ok(epoch) = epoch.parse::<usize>() {
+                        epochs.insert(epoch);
+                    }
+                }
+                match reports::request_my_proofs(idx, epochs, server.clone(), client_keys.sign_key(), server_keys.public_key()).await {
+                    Ok(()) => println!("proofs"),
+                    Err(err) => println!("{:}", err.to_string()),
+                }            } else {
                 print_command_msg();
             }
         }

@@ -136,7 +136,7 @@ impl Timeline {
         }
     }
 
-    pub fn get_proofs(&self, idx : usize, epochs : &Vec<usize>) -> Vec<Vec<u8>> { // Assumes vec is a set
+    pub fn get_proofs(&self, idx : usize, epochs : &HashSet<usize>) -> Vec<Vec<u8>> { // Assumes vec is a set
         let mut proofs = vec![];
 
         let u_proofs = self.proofs.read().unwrap();

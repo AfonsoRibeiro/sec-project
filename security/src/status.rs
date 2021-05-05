@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use serde_derive::{Deserialize, Serialize};
 use sodiumoxide::crypto::sign;
 use sodiumoxide::crypto::box_;
@@ -228,11 +230,11 @@ pub fn decode_users_at_loc_response(
 
 #[derive(Debug,Serialize,Deserialize)]
 pub struct MyProofsRequest {
-    pub epochs : Vec<usize>,
+    pub epochs : HashSet<usize>,
 }
 
 impl MyProofsRequest {
-    pub fn new(epochs : Vec<usize>) -> MyProofsRequest {
+    pub fn new(epochs : HashSet<usize>) -> MyProofsRequest {
         MyProofsRequest {
             epochs,
         }
@@ -273,14 +275,14 @@ pub fn encode_my_proofs_request(
     (sealedbox::seal(&textinfo, theirpk), enc_epochs, key)
 }
 
-pub fn decode_my_proofs_report(
+pub fn decode_my_proofs_request(
     signpk : &sign::PublicKey,
     sim_key : &secretbox::Key,
     cipherreport : &Vec<u8>,
     nonce : &secretbox::Nonce,
 ) -> Result<MyProofsRequest> {
 
-    let decoded_report = secretbox::open(cipherreport, nonce, sim_key).map_err(|_| eyre!("decode_my_proofs_report: Unable to open secretbox"))?;
+    let decoded_report = secretbox::open(cipherreport, nonce, sim_key).map_err(|_| eyre!("decode_my_proofs_request: Unable to open secretbox"))?;
     let report = sign::verify(&decoded_report,signpk).map_err(|_| eyre!("decode_my_proofs: Unable to verify signature"))?;
 
     let report = serde_json::from_slice(&report)?;

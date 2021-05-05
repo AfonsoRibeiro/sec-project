@@ -14,7 +14,7 @@ use protos::location_storage::{SubmitLocationReportRequest, SubmitLocationReport
 use security::{key_management::ServerKeys, report::Report};
 use security::proof::verify_proof;
 use security::report::{decode_info, decode_report};
-use security::status::{decode_loc_report, encode_loc_response, decode_my_proofs_report, encode_my_proofs_response};
+use security::status::{decode_loc_report, encode_loc_response, decode_my_proofs_request, encode_my_proofs_response};
 
 use sodiumoxide::crypto::secretbox;
 
@@ -217,7 +217,7 @@ impl LocationStorage for MyLocationStorage {
             return Err(Status::already_exists("nonce already exists"));
         }
 
-        let proofs_req = match decode_my_proofs_report(
+        let proofs_req = match decode_my_proofs_request(
             client_sign_key,
             info.key(),
             &request.epochs,
@@ -232,7 +232,7 @@ impl LocationStorage for MyLocationStorage {
             Err(_) => return  Err(Status::permission_denied("Unable to decrypt report"))
         };
 
-        let (proofs, nonce) = encode_my_proofs_response(info.key(), self.storage.get_proofs(info.idx(), &proofs_req.epochs));
+        let (proofs, nonce) = encode_my_proofs_response(info.key(), self.storage.get_proofs(info.idx(), &proofs_req.epochs)); 
 
         Ok( Response::new( RequestMyProofsResponse {
             nonce : nonce.0.to_vec(),

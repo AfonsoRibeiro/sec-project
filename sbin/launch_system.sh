@@ -27,8 +27,8 @@ echo
 
 echo "Starting Server"
 echo
-rm single_server/storage.txt
-gnome-terminal -- ./target/$dir/single_server --server $server_addr --size $grid_size --keys $keys_dir --fline $f_line
+rm single_server/storage/*
+gnome-terminal -- ./target/$dir/single_server --server $server_addr --id 1 --size $grid_size --keys $keys_dir --fline $f_line
 
 
 echo "Starting Clients"

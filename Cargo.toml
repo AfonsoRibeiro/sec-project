@@ -5,7 +5,6 @@ members = [
     "client",
     "ha_client",
     "single_server",
-    "multiple_servers",
     "security",
 ]
 

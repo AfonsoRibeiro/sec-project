@@ -1,7 +1,7 @@
 use eyre::eyre;
 use color_eyre::eyre::Result;
 
-use std::sync::Arc;
+use std::{collections::HashSet, sync::Arc};
 use tonic::transport::Uri;
 
 use grid::grid::Timeline;
@@ -11,7 +11,7 @@ use protos::location_storage::location_storage_client::LocationStorageClient;
 
 use sodiumoxide::crypto::sign;
 use sodiumoxide::crypto::box_;
-use security::status::{self, LocationReportRequest, MyProofsRequest, decode_my_proofs_response, decode_response_location, encode_location_report, encode_my_proofs_request};
+use security::status::{LocationReportRequest, MyProofsRequest, decode_my_proofs_response, decode_response_location, encode_location_report, encode_my_proofs_request};
 use security::report::{self, Report, success_report};
 
 
@@ -89,7 +89,7 @@ pub async fn obtain_location_report(
 
 pub async fn request_my_proofs(
     idx : usize,
-    epochs : Vec<usize>,
+    epochs : HashSet<usize>,
     url : Uri,
     sign_key : sign::SecretKey,
     server_key : box_::PublicKey,
@@ -105,7 +105,7 @@ pub async fn request_my_proofs(
         user_info,
     });
 
-    let proofs = match client.request_my_proofs(request).await {
+    let signed_proofs = match client.request_my_proofs(request).await {
         Ok(response) => {
             let response = response.get_ref();
             if let Ok(x) = decode_my_proofs_response(&key, &response.nonce, &response.proofs) {
@@ -118,7 +118,7 @@ pub async fn request_my_proofs(
                             status.code(), status.message())),
     };
 
-    // TODO do something with proofs
+    // TODO do something with proofs and verify them
 
     Ok(())
 }
