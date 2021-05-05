@@ -59,6 +59,7 @@ async fn main() -> Result<()> {
         tokio::spawn(proofing_system::start_proofer(opt.idx, timeline.clone(), client_keys.sign_key()));
 
     let server_url : Uri = format!("[::1]:500{:02}", opt.server_max_id).parse().unwrap();
+    println!("{:?}", server_url);
     tokio::spawn(epochs_generator(timeline.clone(), opt.idx, server_url.clone(), client_keys.clone(), server_keys.clone()));
 
     read_commands(timeline.clone(), opt.idx, server_url, client_keys, server_keys).await;

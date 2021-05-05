@@ -1,14 +1,12 @@
 #!/usr/bin/env bash
 
-n_points=50
-grid_size=5
+n_points=20
+server_max_id=5
+grid_size=3
 epochs=10
 
 grid_file="grid/grid.txt"
 keys_dir="security/keys"
-
-server_addr="[::1]:50051"
-server_url="http://[::1]:50051"
 
 dir="debug"
 #dir="release"
@@ -25,17 +23,19 @@ echo "Generating keys"
 echo
 ./target/$dir/security --clients $n_points --keys $keys_dir
 
-echo "Starting Server"
+echo "Starting Servers"
 echo
 rm single_server/storage/*
-gnome-terminal -- ./target/$dir/single_server --server $server_addr --id 1 --size $grid_size --keys $keys_dir --fline $f_line
-
+for ((idx=0;idx<=server_max_id;idx++))
+do
+    gnome-terminal -- ./target/$dir/single_server --id $idx --size $grid_size --keys $keys_dir --fline $f_line
+done
 
 echo "Starting Clients"
 echo
-for ((idx=0;idx<n_points-1;idx++))
+for ((idx=0;idx<n_points;idx++))
 do
-    gnome-terminal -- ./target/$dir/client --server $server_url --id $idx --grid $grid_file --keys $keys_dir
+    gnome-terminal -- ./target/$dir/client --server_max_id $server_max_id --id $idx --grid $grid_file --keys $keys_dir
 done
 
 echo "Starting ha_client"
