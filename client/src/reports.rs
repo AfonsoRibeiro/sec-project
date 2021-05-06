@@ -18,14 +18,14 @@ use security::report::{self, Report, success_report};
 pub async fn submit_location_report(
     idx : usize,
     report : &Report,
-    url : Uri,
+    url : &Uri,
     sign_key : sign::SecretKey,
     server_key : box_::PublicKey,
 ) -> Result<()> {
 
     let (report_info, report, key) = report::encode_report(&sign_key, &server_key, report, idx);
 
-    let mut client = LocationStorageClient::connect(url).await?;
+    let mut client = LocationStorageClient::connect(url.clone()).await?;
 
     println!("connected");
 
