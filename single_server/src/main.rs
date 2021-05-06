@@ -4,7 +4,7 @@ mod storage;
 use color_eyre::eyre::Result;
 use structopt::StructOpt;
 
-use std::sync::Arc;
+use std::{fs, sync::Arc};
 
 use security::key_management::retrieve_server_keys;
 
@@ -38,6 +38,8 @@ async fn main() -> Result<()> {
 
     sodiumoxide::init().expect("Unable to make sodiumoxide thread safe");
 
+    fs::create_dir_all(&opt.storage_dir)?;
+    
     let storage_file = format!("{:}{:}.txt", &opt.storage_dir, opt.server_id);
 
     let storage = if let Ok(storage) = storage::retrieve_storage(&storage_file) {

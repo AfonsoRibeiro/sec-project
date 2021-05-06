@@ -43,7 +43,7 @@ async fn main() -> Result<()> {
     color_eyre::install()?;
 
     let opt = Opt::from_args();
-
+    
     let timeline = Arc::new(retrieve_timeline(&opt.grid_file)?);
 
     if !timeline.is_point(opt.idx) {
@@ -58,7 +58,7 @@ async fn main() -> Result<()> {
     let proofer =
         tokio::spawn(proofing_system::start_proofer(opt.idx, timeline.clone(), client_keys.sign_key()));
 
-    let server_url : Uri = format!("[::1]:500{:02}", opt.server_max_id).parse().unwrap();
+    let server_url : Uri = format!("http://[::1]:500{:02}", opt.server_max_id).parse().unwrap();
     println!("{:?}", server_url);
     tokio::spawn(epochs_generator(timeline.clone(), opt.idx, server_url.clone(), client_keys.clone(), server_keys.clone()));
 
@@ -88,7 +88,7 @@ async fn reports_generator(
                 client_keys.sign_key(),
                 server_key.public_key(),
             ).await.is_err() {
-                println!("Unhable to submit report");
+                println!("Unhable to submit report to server {:?}", server_url.clone());
                 sleep(Duration::from_millis(500)).await; // allow time for server recovery
             }
 

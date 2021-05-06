@@ -80,6 +80,7 @@ impl LocationStorage for MyLocationStorage {
         &self,
         request: Request<SubmitLocationReportRequest>,
     ) -> Result<Response<SubmitLocationReportResponse>, Status> {
+        println!("request");
         let request = request.get_ref();
 
         let info = if let Ok(info) = decode_info(
