@@ -7,7 +7,7 @@ use security::report::Report;
 use security::proof::{Proof, sign_proof};
 use tonic::transport::Uri;
 
-use std::iter::FromIterator;
+use std::{iter::FromIterator, sync::Arc};
 
 const IDX : usize = 19;
 const EPOCH : usize = 1;
@@ -16,7 +16,7 @@ const SIZE : usize = 3;
 #[tokio::test]
 #[ignore]
 pub async fn submit_correct_report () {
-    let server_url : Uri = Uri::from_static("http://[::1]:50051");
+    let server_url  = get_servers_url(0);
 
     common::make_thread_safe();
 
@@ -32,7 +32,7 @@ pub async fn submit_correct_report () {
                 reports::submit_location_report(
                     IDX,
                     &report,
-                    server_url.clone(),
+                    &server_url[0],
                     client_keys.sign_key(),
                     sever_key,
                 ).await.is_ok()
@@ -49,7 +49,7 @@ pub async fn submit_correct_report () {
 #[tokio::test]
 #[ignore]
 pub async fn submit_correct_report_twice () {
-    let server_url : Uri = Uri::from_static("http://[::1]:50051");
+    let server_url  = get_servers_url(0);
 
     common::make_thread_safe();
 
@@ -65,7 +65,7 @@ pub async fn submit_correct_report_twice () {
                 reports::submit_location_report(
                     IDX,
                     &report,
-                    server_url.clone(),
+                    &server_url[0],
                     client_keys.sign_key(),
                     sever_key,
                 ).await.is_ok()
@@ -75,7 +75,7 @@ pub async fn submit_correct_report_twice () {
                 reports::submit_location_report(
                     IDX,
                     &report,
-                    server_url.clone(),
+                    &server_url[0],
                     client_keys.sign_key(),
                     sever_key,
                 ).await.is_ok()
@@ -92,7 +92,7 @@ pub async fn submit_correct_report_twice () {
 #[tokio::test]
 #[ignore]
 pub async fn submit_empty_report () {
-    let server_url : Uri = Uri::from_static("http://[::1]:50051");
+    let server_url  = get_servers_url(0);
 
     common::make_thread_safe();
 
@@ -108,7 +108,7 @@ pub async fn submit_empty_report () {
             reports::submit_location_report(
                 IDX,
                 &report,
-                server_url.clone(),
+                &server_url[0],
                 client_keys.sign_key(),
                 sever_key,
             ).await.is_err()
@@ -121,7 +121,7 @@ pub async fn submit_empty_report () {
 #[tokio::test]
 #[ignore]
 pub async fn submit_bad_location_report () {
-    let server_url : Uri = Uri::from_static("http://[::1]:50051");
+   let server_url  = get_servers_url(0);
 
     common::make_thread_safe();
 
@@ -137,7 +137,7 @@ pub async fn submit_bad_location_report () {
                 reports::submit_location_report(
                     IDX,
                     &report,
-                    server_url.clone(),
+                    &server_url[0],
                     client_keys.sign_key(),
                     sever_key,
                 ).await.is_err()
@@ -154,7 +154,7 @@ pub async fn submit_bad_location_report () {
 #[tokio::test]
 #[ignore]
 pub async fn submit_only_my_proof_report () {
-    let server_url : Uri = Uri::from_static("http://[::1]:50051");
+   let server_url  = get_servers_url(0);
 
 
     common::make_thread_safe();
@@ -172,7 +172,7 @@ pub async fn submit_only_my_proof_report () {
             reports::submit_location_report(
                 IDX,
                 &report,
-                server_url.clone(),
+                &server_url[0],
                 client_keys.sign_key(),
                 sever_key,
             ).await.is_err()
@@ -185,7 +185,7 @@ pub async fn submit_only_my_proof_report () {
 #[tokio::test]
 #[ignore]
 pub async fn submit_not_enough_proofs_report () {
-    let server_url : Uri = Uri::from_static("http://[::1]:50051");
+   let server_url  = get_servers_url(0);
 
     common::make_thread_safe();
 
@@ -204,7 +204,7 @@ pub async fn submit_not_enough_proofs_report () {
                 reports::submit_location_report(
                     IDX,
                     &report,
-                    server_url.clone(),
+                    &server_url[0],
                     client_keys.sign_key(),
                     sever_key,
                 ).await.is_err()
@@ -216,4 +216,12 @@ pub async fn submit_not_enough_proofs_report () {
     } else {
         panic!("Error: reports_generator! (Should never happen)");
     }
+}
+
+fn get_servers_url(server_max_id : usize ) -> Arc<Vec<Uri>> {
+    let mut server_urls = vec![];
+    for i in 0..=server_max_id{
+        server_urls.push(format!("http://[::1]:500{:02}", i).parse().unwrap());
+    }
+    Arc::new(server_urls)
 }
