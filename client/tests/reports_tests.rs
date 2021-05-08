@@ -21,7 +21,7 @@ pub async fn submit_correct_report () {
     common::make_thread_safe();
 
     let client_keys = common::get_client_keys(IDX);
-    let sever_key = common::get_pub_server_key();
+    let server_key = common::get_pub_server_key();
 
     let timeline = common::get_timeline();
     if let Some((loc_x, loc_y)) = timeline.get_location_at_epoch(IDX, EPOCH) {
@@ -34,7 +34,7 @@ pub async fn submit_correct_report () {
                     &report,
                     &server_url[0],
                     client_keys.sign_key(),
-                    sever_key,
+                    &server_key[0],
                 ).await.is_ok()
             );
 
@@ -54,7 +54,7 @@ pub async fn submit_correct_report_twice () {
     common::make_thread_safe();
 
     let client_keys = common::get_client_keys(IDX);
-    let sever_key = common::get_pub_server_key();
+    let server_key = common::get_pub_server_key();
 
     let timeline = common::get_timeline();
     if let Some((loc_x, loc_y)) = timeline.get_location_at_epoch(IDX, EPOCH) {
@@ -67,7 +67,7 @@ pub async fn submit_correct_report_twice () {
                     &report,
                     &server_url[0],
                     client_keys.sign_key(),
-                    sever_key,
+                    &server_key[0],
                 ).await.is_ok()
             );
             let report = Report::new(EPOCH, (loc_x, loc_y), IDX, idxs_ass, proofs);
@@ -77,7 +77,7 @@ pub async fn submit_correct_report_twice () {
                     &report,
                     &server_url[0],
                     client_keys.sign_key(),
-                    sever_key,
+                    &server_key[0],
                 ).await.is_ok()
             );
 
@@ -97,7 +97,7 @@ pub async fn submit_empty_report () {
     common::make_thread_safe();
 
     let client_keys = common::get_client_keys(IDX);
-    let sever_key = common::get_pub_server_key();
+    let server_key = common::get_pub_server_key();
 
     let timeline = common::get_timeline();
     if let Some((loc_x, loc_y)) = timeline.get_location_at_epoch(IDX, EPOCH) {
@@ -110,7 +110,7 @@ pub async fn submit_empty_report () {
                 &report,
                 &server_url[0],
                 client_keys.sign_key(),
-                sever_key,
+                &server_key[0],
             ).await.is_err()
         );
     } else {
@@ -126,7 +126,7 @@ pub async fn submit_bad_location_report () {
     common::make_thread_safe();
 
     let client_keys = common::get_client_keys(IDX);
-    let sever_key = common::get_pub_server_key();
+    let server_key = common::get_pub_server_key();
 
     let timeline = common::get_timeline();
     if let Some((_, loc_y)) = timeline.get_location_at_epoch(IDX, EPOCH) {
@@ -139,7 +139,7 @@ pub async fn submit_bad_location_report () {
                     &report,
                     &server_url[0],
                     client_keys.sign_key(),
-                    sever_key,
+                    &server_key[0],
                 ).await.is_err()
             );
 
@@ -160,7 +160,7 @@ pub async fn submit_only_my_proof_report () {
     common::make_thread_safe();
 
     let client_keys = common::get_client_keys(IDX);
-    let sever_key = common::get_pub_server_key();
+    let server_key = common::get_pub_server_key();
 
     let timeline = common::get_timeline();
     if let Some((loc_x, loc_y)) = timeline.get_location_at_epoch(IDX, EPOCH) {
@@ -174,7 +174,7 @@ pub async fn submit_only_my_proof_report () {
                 &report,
                 &server_url[0],
                 client_keys.sign_key(),
-                sever_key,
+                &server_key[0],
             ).await.is_err()
         );
     } else {
@@ -190,7 +190,7 @@ pub async fn submit_not_enough_proofs_report () {
     common::make_thread_safe();
 
     let client_keys = common::get_client_keys(IDX);
-    let sever_key = common::get_pub_server_key();
+    let server_key = common::get_pub_server_key();
 
     let timeline = common::get_timeline();
     if let Some((loc_x, loc_y)) = timeline.get_location_at_epoch(IDX, EPOCH) {
@@ -206,7 +206,7 @@ pub async fn submit_not_enough_proofs_report () {
                     &report,
                     &server_url[0],
                     client_keys.sign_key(),
-                    sever_key,
+                    &server_key[0],
                 ).await.is_err()
             );
 

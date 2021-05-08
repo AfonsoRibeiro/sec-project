@@ -241,7 +241,7 @@ mod tests {
 
     const SIZE : usize = 10;
     const EPOCH : usize = 5;
-    const FILENAME : &str = "storage.txt";
+    const FILENAME : &str = "/storage/storage.txt";
     const POS_X : usize = 3;
     const DIFF_POS_X : usize = 5;
     const POS_Y : usize = 5;

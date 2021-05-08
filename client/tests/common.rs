@@ -5,7 +5,7 @@ use security::key_management::{
     ClientKeys,
     retrieve_client_keys,
     retrieve_server_keys,
-    retrieve_server_public_keys,
+    retrieve_servers_public_keys,
 };
 
 use sodiumoxide::crypto::sign;
@@ -31,11 +31,11 @@ pub fn get_client_keys(idx : usize) -> Arc<ClientKeys> {
 
 #[allow(dead_code)]
 pub fn get_pub_sign_key(idx : usize) -> sign::PublicKey  {
-    let server_keys = retrieve_server_keys(KEYS_DIR).expect("Unhable to get server keys");
+    let server_keys = retrieve_server_keys(KEYS_DIR, 0).expect("Unhable to get server keys");
     *server_keys.client_sign_key(idx).unwrap()
 }
 
 #[allow(dead_code)]
-pub fn get_pub_server_key() -> box_::PublicKey {
-    retrieve_server_public_keys(KEYS_DIR).unwrap().public_key()
+pub fn get_pub_server_key() ->  Vec<box_::PublicKey> {
+    retrieve_servers_public_keys(KEYS_DIR).unwrap().public_keys().to_vec()
 }

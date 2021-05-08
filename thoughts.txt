@@ -1,9 +1,11 @@
-TODO:
-    Investigate each algorithm
-
-    Have blacklist for each epoch
-
-    Keystore
-
+???:
     which proofs do we save? can there be repeated? Should we save them signed?
+
+TODO:
+    Investigate each algorithm /* ONLY FOR DEBATE */
+
+    Have blacklist for each epoch /* STEP 5 */
+
+    Keystore /* As soon as possible */
+
 

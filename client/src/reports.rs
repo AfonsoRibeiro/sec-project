@@ -19,11 +19,11 @@ pub async fn submit_location_report(
     idx : usize,
     report : &Report,
     url : &Uri,
-    sign_key : sign::SecretKey,
-    server_key : box_::PublicKey,
+    sign_key : &sign::SecretKey,
+    server_key : &box_::PublicKey,
 ) -> Result<()> {
 
-    let (report_info, report, key) = report::encode_report(&sign_key, &server_key, report, idx);
+    let (report_info, report, key) = report::encode_report(sign_key, server_key, report, idx);
 
     let mut client = LocationStorageClient::connect(url.clone()).await?;
 
@@ -59,12 +59,12 @@ pub async fn obtain_location_report(
     idx : usize,
     epoch : usize,
     url : Uri,
-    sign_key : sign::SecretKey,
-    server_key : box_::PublicKey,
+    sign_key : &sign::SecretKey,
+    server_key : &box_::PublicKey,
 )-> Result<(usize, usize)> {
 
     let loc_report = LocationReportRequest::new(idx, epoch);
-    let (user_info, user, key) = encode_location_report(&sign_key, &server_key, &loc_report, idx);
+    let (user_info, user, key) = encode_location_report(sign_key, server_key, &loc_report, idx);
 
     let mut client = LocationStorageClient::connect(url).await?;
 
@@ -98,12 +98,12 @@ pub async fn request_my_proofs(
     idx : usize,
     epochs : HashSet<usize>,
     url : Uri,
-    sign_key : sign::SecretKey,
-    server_key : box_::PublicKey,
+    sign_key : &sign::SecretKey,
+    server_key : &box_::PublicKey,
 ) -> Result<()> {
 
     let proofs_req = MyProofsRequest::new(epochs);
-    let (user_info, epochs, key) = encode_my_proofs_request(&sign_key, &server_key, &proofs_req, idx);
+    let (user_info, epochs, key) = encode_my_proofs_request(sign_key, server_key, &proofs_req, idx);
 
     let mut client = LocationStorageClient::connect(url).await?;
 

@@ -39,7 +39,7 @@ async fn main() -> Result<()> {
     sodiumoxide::init().expect("Unable to make sodiumoxide thread safe");
 
     fs::create_dir_all(&opt.storage_dir)?;
-    
+
     let storage_file = format!("{:}{:}.txt", &opt.storage_dir, opt.server_id);
 
     let storage = if let Ok(storage) = storage::retrieve_storage(&storage_file) {
@@ -48,7 +48,7 @@ async fn main() -> Result<()> {
         Arc::new( storage::Timeline::new(opt.grid_size, storage_file))
     };
 
-    let server_keys = Arc::new(retrieve_server_keys(&opt.keys_dir)?);
+    let server_keys = Arc::new(retrieve_server_keys(&opt.keys_dir, opt.server_id)?);
 
     server::start_server(format!("[::1]:500{:02}", opt.server_id), storage, server_keys, opt.f_line).await?;
 

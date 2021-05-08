@@ -24,7 +24,7 @@ pub async fn get_submited_report () {
     common::make_thread_safe();
 
     let client_keys = common::get_client_keys(IDX);
-    let sever_key = common::get_pub_server_key();
+    let server_key = common::get_pub_server_key();
 
     let timeline = common::get_timeline();
 
@@ -38,7 +38,7 @@ pub async fn get_submited_report () {
                 EPOCH,
                 server_url,
                 client_keys.sign_key(),
-                sever_key
+                &server_key[0],
             ).await;
 
         assert!(loc_res.is_ok());
@@ -57,7 +57,7 @@ pub async fn get_not_mine_submitted_report () {
     common::make_thread_safe();
 
     let client_keys = common::get_client_keys(IDX);
-    let sever_key = common::get_pub_server_key();
+    let server_key = common::get_pub_server_key();
 
     let timeline = common::get_timeline();
 
@@ -70,7 +70,7 @@ pub async fn get_not_mine_submitted_report () {
             EPOCH,
             server_url,
             client_keys.sign_key(),
-            sever_key
+            &server_key[0],
         ).await;
 
     assert!(loc_res.is_err());
@@ -84,7 +84,7 @@ pub async fn get_not_submitted_yet_report () {
     common::make_thread_safe();
 
     let client_keys = common::get_client_keys(IDX);
-    let sever_key = common::get_pub_server_key();
+    let server_key = common::get_pub_server_key();
 
     let timeline = common::get_timeline();
 
@@ -95,7 +95,7 @@ pub async fn get_not_submitted_yet_report () {
             N_EPOCHS,
             server_url,
             client_keys.sign_key(),
-            sever_key
+            &server_key[0],
         ).await;
 
     assert!(loc_res.is_err());

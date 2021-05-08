@@ -7,7 +7,7 @@ use security::key_management::{
     ClientKeys,
     HAClientKeys,
     retrieve_client_keys,
-    retrieve_server_public_keys,
+    retrieve_servers_public_keys,
     retrieve_ha_client_keys,
 };
 
@@ -28,8 +28,8 @@ pub fn get_client_keys(idx : usize) -> Arc<ClientKeys> {
     Arc::new(retrieve_client_keys(KEYS_DIR, idx).expect("Failed to retrieve sign key"))
 }
 
-pub fn get_pub_server_key() -> box_::PublicKey {
-    retrieve_server_public_keys(KEYS_DIR).unwrap().public_key()
+pub fn get_pub_server_key() -> Vec<box_::PublicKey> {
+    retrieve_servers_public_keys(KEYS_DIR).unwrap().public_keys().to_vec()
 }
 
 pub fn get_ha_client_keys() -> Arc<HAClientKeys> {

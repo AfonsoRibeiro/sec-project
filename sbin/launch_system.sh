@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 n_points=20
-server_max_id=5
+n_servers=5
 grid_size=3
 epochs=10
 
@@ -21,12 +21,12 @@ IFS=: read -r trash f_line <<< "$f_line"
 
 echo "Generating keys"
 echo
-./target/$dir/security --clients $n_points --keys $keys_dir
+./target/$dir/security --clients $n_points --servers $n_servers --keys $keys_dir
 
 echo "Starting Servers"
 echo
 rm single_server/storage/*
-for ((idx=0;idx<=server_max_id;idx++))
+for ((idx=0;idx<n_servers;idx++))
 do
     gnome-terminal -- ./target/$dir/single_server --id $idx --size $grid_size --keys $keys_dir --fline $f_line
 done
@@ -35,7 +35,7 @@ echo "Starting Clients"
 echo
 for ((idx=0;idx<n_points;idx++))
 do
-    gnome-terminal -- ./target/$dir/client --server_max_id $server_max_id --id $idx --grid $grid_file --keys $keys_dir
+    gnome-terminal -- ./target/$dir/client --n_servers $n_servers --id $idx --grid $grid_file --keys $keys_dir
 done
 
 echo "Starting ha_client"

@@ -7,7 +7,7 @@ use regex::Regex;
 use tonic::transport::Uri;
 use tokio::io::{self, AsyncBufReadExt, BufReader};
 
-use security::key_management::{HAClientKeys, ServerPublicKey, retrieve_ha_client_keys, retrieve_server_public_keys};
+use security::key_management::{HAClientKeys, ServerPublicKey, retrieve_ha_client_keys, retrieve_servers_public_keys};
 
 #[derive(StructOpt)]
 #[structopt(name = "HA_Client", about = "Checking on server satus")]
@@ -32,7 +32,7 @@ async fn main() -> Result<()> {
     let opt = Opt::from_args();
 
     let ha_keys = retrieve_ha_client_keys(&opt.keys_dir)?;
-    let server_keys = retrieve_server_public_keys(&opt.keys_dir)?;
+    let server_keys = retrieve_servers_public_keys(&opt.keys_dir)?;
 
     sodiumoxide::init().expect("Unable to make sodiumoxide thread safe");
 
@@ -65,7 +65,7 @@ async fn read_commands(grid_size : usize, server : Uri, ha_keys : &HAClientKeys,
                     grid_size,
                     server.clone(),
                     &ha_keys.sign_key(),
-                    &server_keys.public_key()
+                    &server_keys.public_key(0)
                 ).await {
                     Ok((x, y)) => println!("location {:} {:}", x, y),
                     Err(err) => println!("{:}", err.to_string()),
@@ -82,7 +82,7 @@ async fn read_commands(grid_size : usize, server : Uri, ha_keys : &HAClientKeys,
                     pos_y.unwrap(),
                     server.clone(),
                     &ha_keys.sign_key(),
-                    &server_keys.public_key()
+                    &server_keys.public_key(0)
                 ).await {
                     Ok(clients) => println!("clients {:?}", clients),
                     Err(err) => println!("{:}", err.to_string()),

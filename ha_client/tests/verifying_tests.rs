@@ -38,7 +38,7 @@ pub async fn get_submited_report () {
                 EPOCH,
                 GRID_SIZE,
                 server_url,
-                &ha_client_keys.sign_key(), &server_key
+                &ha_client_keys.sign_key(), &server_key[0],
             ).await;
 
         assert!(loc_res.is_ok());
@@ -65,7 +65,7 @@ pub async fn get_not_submited_report () {
             GRID_SIZE,
             server_url,
             &ha_client_keys.sign_key(),
-            &server_key
+            &server_key[0]
         ).await;
 
     assert!(loc_res.is_err());
@@ -88,7 +88,7 @@ pub async fn get_invalid_id_report () {
             GRID_SIZE,
             server_url,
             &ha_client_keys.sign_key(),
-            &server_key
+            &server_key[0]
         ).await;
 
     assert!(loc_res.is_err());
@@ -111,7 +111,7 @@ pub async fn get_location_report_invalid_signature () {
             GRID_SIZE,
             server_url,
             &client_keys.sign_key(),
-            &server_key
+            &server_key[0]
         ).await;
 
     assert!(loc_res.is_err());
@@ -148,7 +148,7 @@ pub async fn get_users_at_location_at_epoch () {
             POS_Y,
             server_url,
             &ha_client_keys.sign_key(),
-            &server_key
+            &server_key[0]
         ).await;
 
     assert!(users_res.is_ok());
@@ -179,7 +179,7 @@ pub async fn get_users_bad_location () {
             POS_Y,
             server_url,
             &ha_client_keys.sign_key(),
-            &server_key
+            &server_key[0]
         ).await;
 
     assert!(users_res.is_err());
@@ -202,7 +202,7 @@ pub async fn get_users_not_existent_epoch () {
             POS_Y,
             server_url,
             &ha_client_keys.sign_key(),
-            &server_key
+            &server_key[0]
         ).await;
 
     assert!(users_res.is_err());
@@ -225,7 +225,7 @@ pub async fn get_users_invalid_signature () {
             POS_Y,
             server_url,
             &client_keys.sign_key(),
-            &server_key
+            &server_key[0]
         ).await;
 
     assert!(users_res.is_err());

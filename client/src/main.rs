@@ -18,7 +18,7 @@ use security::{key_management::{
     ClientKeys,
     ServerPublicKey,
     retrieve_client_keys,
-    retrieve_server_public_keys,
+    retrieve_servers_public_keys,
 }, report::Report};
 
 #[derive(StructOpt)]
@@ -34,8 +34,8 @@ struct Opt {
     #[structopt(name = "keys", long, default_value = "security/keys")]
     keys_dir : String,
 
-    #[structopt(name = "server_max_id", long, default_value = "0")]
-    server_max_id : usize
+    #[structopt(name = "n_servers", long, default_value = "0")]
+    n_servers : usize
 }
 
 #[tokio::main]
@@ -43,7 +43,7 @@ async fn main() -> Result<()> {
     color_eyre::install()?;
 
     let opt = Opt::from_args();
-    
+
     let timeline = Arc::new(retrieve_timeline(&opt.grid_file)?);
 
     if !timeline.is_point(opt.idx) {
@@ -51,14 +51,14 @@ async fn main() -> Result<()> {
     }
 
     let client_keys = Arc::new(retrieve_client_keys(&opt.keys_dir, opt.idx)?);
-    let server_keys = Arc::new(retrieve_server_public_keys(&opt.keys_dir)?);
+    let server_keys = Arc::new(retrieve_servers_public_keys(&opt.keys_dir)?);
 
     sodiumoxide::init().expect("Unable to make sodiumoxide thread safe");
 
     let proofer =
-        tokio::spawn(proofing_system::start_proofer(opt.idx, timeline.clone(), client_keys.sign_key()));
+        tokio::spawn(proofing_system::start_proofer(opt.idx, timeline.clone(), client_keys.sign_key().clone()));
 
-    let server_url  = get_servers_url(opt.server_max_id);
+    let server_url  = get_servers_url(opt.n_servers);
 
     println!("{:?}", server_url);
     tokio::spawn(epochs_generator(timeline.clone(), opt.idx, server_url.clone(), client_keys.clone(), server_keys.clone()));
@@ -82,14 +82,14 @@ async fn reports_generator(
         let (proofs, idxs_ass) = proofing_system::get_proofs(timeline.clone(), idx, epoch).await;
         if proofs.len() > timeline.f_line && proofs.len() == idxs_ass.len() {
             let report = Report::new(epoch, (loc_x, loc_y), idx, idxs_ass, proofs);
-            for server_url in server_urls.iter() {
+            for (server_id, server_url) in server_urls.iter().enumerate() {
                 println!("connecting to {:?}", server_url);
                 while reports::submit_location_report(
                     idx,
                     &report,
                     server_url,
                     client_keys.sign_key(),
-                    server_key.public_key(),
+                    server_key.public_key(server_id),
                 ).await.is_err() {
                     println!("Unhable to submit report to server {:?}", server_url.clone());
                     sleep(Duration::from_millis(500)).await; // allow time for server recovery
@@ -149,7 +149,7 @@ async fn read_commands(
             if let Some(cap) = orep_pat.captures(buffer.trim_end()) {
                 let epoch  = cap[2].parse::<usize>();
                 if epoch.is_err() { print_command_msg(); continue; }
-                match reports::obtain_location_report(timeline.clone(), idx, epoch.unwrap(), server_urls[0].clone(), client_keys.sign_key(), server_keys.public_key()).await {
+                match reports::obtain_location_report(timeline.clone(), idx, epoch.unwrap(), server_urls[0].clone(), client_keys.sign_key(), server_keys.public_key(0)).await {
                     Ok((x, y)) => println!("location {:} {:}", x, y),
                     Err(err) => println!("{:}", err.to_string()),
                 }
@@ -161,7 +161,7 @@ async fn read_commands(
                         epochs.insert(epoch);
                     }
                 }
-                match reports::request_my_proofs(idx, epochs, server_urls[0].clone(), client_keys.sign_key(), server_keys.public_key()).await {
+                match reports::request_my_proofs(idx, epochs, server_urls[0].clone(), client_keys.sign_key(), server_keys.public_key(0)).await {
                     Ok(()) => println!("proofs"),
                     Err(err) => println!("{:}", err.to_string()),
                 }            } else {
@@ -173,9 +173,9 @@ async fn read_commands(
 
 fn print_command_msg() { println!("To obtain a report use: report <epoch>"); }
 
-fn get_servers_url(server_max_id : usize ) -> Arc<Vec<Uri>> {
+fn get_servers_url(n_servers : usize ) -> Arc<Vec<Uri>> {
     let mut server_urls = vec![];
-    for i in 0..=server_max_id{
+    for i in 0..n_servers{
         server_urls.push(format!("http://[::1]:500{:02}", i).parse().unwrap());
     }
     Arc::new(server_urls)

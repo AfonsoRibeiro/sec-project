@@ -23,7 +23,7 @@ impl ClientKeys {
     }
 
     #[allow(dead_code)]
-    pub fn sign_key(&self) -> sign::SecretKey { self.sign_key.clone() }
+    pub fn sign_key(&self) -> &sign::SecretKey { &self.sign_key }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -39,22 +39,24 @@ impl HAClientKeys {
     }
 
     #[allow(dead_code)]
-    pub fn sign_key(&self) -> sign::SecretKey { self.private_key.clone() }
+    pub fn sign_key(&self) -> &sign::SecretKey { &self.private_key }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ServerPublicKey {
-    public_key : box_::PublicKey,
+    public_keys : Vec<box_::PublicKey>,
 }
 
 impl ServerPublicKey {
-    fn new(public_key : box_::PublicKey) -> ServerPublicKey {
+    fn new(public_keys : Vec<box_::PublicKey>) -> ServerPublicKey {
         ServerPublicKey {
-            public_key,
+            public_keys,
         }
     }
     #[allow(dead_code)]
-    pub fn public_key(&self) -> box_::PublicKey { self.public_key.clone() }
+    pub fn public_key(&self, server_id : usize) -> &box_::PublicKey { &self.public_keys[server_id] }
+    #[allow(dead_code)]
+    pub fn public_keys(&self) -> &Vec<box_::PublicKey> { &self.public_keys }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -97,15 +99,14 @@ impl ServerKeys{
     }
 }
 
-pub fn save_keys(size : usize, keys_dir : String) -> Result<()> {
+pub fn save_keys(n_clients : usize, n_servers : usize, keys_dir : String) -> Result<()> {
     fs::create_dir_all(&keys_dir)?;
 
     let mut key_pairs = HashMap::new();
     let mut client_secret_pairs =  HashMap::new();
+    let mut servers_public_keys = vec![];
 
-    let (serverpk, serversk)= box_::gen_keypair();
-
-    for index in 0..size { //each index correspond to the idx of client
+    for index in 0..n_clients { //each index correspond to the idx of client
         let (signpk, signsk) = sign::gen_keypair();
 
         key_pairs.insert(index, signpk);
@@ -113,19 +114,32 @@ pub fn save_keys(size : usize, keys_dir : String) -> Result<()> {
         let ck = ClientKeys::new(signsk);
         client_secret_pairs.insert(index, ck);
     }
-
-    let (ha_pk, ha_sk) = sign::gen_keypair();
-
-    let sk = ServerKeys::new(key_pairs, serversk, serverpk,ha_pk);
-    let server_public_key = ServerPublicKey::new(serverpk);
-
     for (idx, c_k) in client_secret_pairs.into_iter() {
         save_client_keys(&keys_dir, idx, c_k)?;
     }
 
+    let (ha_pk, ha_sk) = sign::gen_keypair();
+
+    for server_idx in 0..n_servers {
+
+        let (serverpk, serversk)= box_::gen_keypair();
+
+        servers_public_keys.push(serverpk);
+
+        save_server_keys(
+            &keys_dir,
+            server_idx,
+            ServerKeys::new(
+                key_pairs.clone(),
+                serversk,
+                servers_public_keys[server_idx],
+                ha_pk)
+            )?;
+    }
+
+
     save_ha_client_keys(&keys_dir, HAClientKeys::new(ha_sk))?;
-    save_server_keys(&keys_dir, sk)?;
-    save_server_public_keys(&keys_dir, server_public_key)?;
+    save_servers_public_keys(&keys_dir, ServerPublicKey::new(servers_public_keys))?;
 
     Ok(())
 
@@ -139,15 +153,15 @@ fn save_client_keys(keys_dir : &str, idx : usize, client : ClientKeys) -> Result
     Ok(())
 }
 
-fn save_server_keys(keys_dir : &str, server : ServerKeys)  -> Result<()> {
-    let file = File::create(format!("{:}/server.keys", keys_dir))?;
+fn save_server_keys(keys_dir : &str, server_idx : usize, server : ServerKeys)  -> Result<()> {
+    let file = File::create(format!("{:}/server_{:02}.keys", keys_dir, server_idx))?;
 
     serde_json::to_writer(BufWriter::new(file), &server)?;
 
     Ok(())
 }
 
-fn save_server_public_keys(keys_dir : &str, server_pub : ServerPublicKey) -> Result<()> {
+fn save_servers_public_keys(keys_dir : &str, server_pub : ServerPublicKey) -> Result<()> {
     let file = File::create(format!("{:}/server_public.keys", keys_dir))?;
 
     serde_json::to_writer(BufWriter::new(file), &server_pub)?;
@@ -174,8 +188,8 @@ pub fn retrieve_client_keys(keys_dir : &str, idx : usize) -> Result<ClientKeys> 
 }
 
 #[allow(dead_code)]
-pub fn retrieve_server_keys(keys_dir : &str)  -> Result<ServerKeys> {
-    let file = File::open(format!("{:}/server.keys", keys_dir))?;
+pub fn retrieve_server_keys(keys_dir : &str, server_idx : usize)  -> Result<ServerKeys> {
+    let file = File::open(format!("{:}/server_{:02}.keys", keys_dir, server_idx))?;
     let reader = BufReader::new(file);
 
     Ok(serde_json::from_reader(reader).wrap_err_with(
@@ -184,7 +198,7 @@ pub fn retrieve_server_keys(keys_dir : &str)  -> Result<ServerKeys> {
 }
 
 #[allow(dead_code)]
-pub fn retrieve_server_public_keys(keys_dir : &str) -> Result<ServerPublicKey> {
+pub fn retrieve_servers_public_keys(keys_dir : &str) -> Result<ServerPublicKey> {
     let file = File::open(format!("{:}/server_public.keys", keys_dir))?;
     let reader = BufReader::new(file);
 
