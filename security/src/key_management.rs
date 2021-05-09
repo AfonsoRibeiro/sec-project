@@ -13,17 +13,22 @@ use sodiumoxide::crypto::sign;
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ClientKeys {
     sign_key : sign::SecretKey,
+    public_key : sign::PublicKey
 }
 
 impl ClientKeys {
-    fn new(sign_key : sign::SecretKey) -> ClientKeys {
+    fn new(sign_key : sign::SecretKey, public_key : sign::PublicKey) -> ClientKeys {
         ClientKeys {
             sign_key,
+            public_key,
         }
     }
 
     #[allow(dead_code)]
     pub fn sign_key(&self) -> &sign::SecretKey { &self.sign_key }
+
+    #[allow(dead_code)]
+    pub fn public_key(&self) -> &sign::PublicKey { &self.public_key }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -111,7 +116,7 @@ pub fn save_keys(n_clients : usize, n_servers : usize, keys_dir : String) -> Res
 
         key_pairs.insert(index, signpk);
 
-        let ck = ClientKeys::new(signsk);
+        let ck = ClientKeys::new(signsk, signpk);
         client_secret_pairs.insert(index, ck);
     }
     for (idx, c_k) in client_secret_pairs.into_iter() {

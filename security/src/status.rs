@@ -6,7 +6,7 @@ use sodiumoxide::crypto::box_;
 use sodiumoxide::crypto::secretbox;
 use sodiumoxide::crypto::sealedbox;
 use color_eyre::eyre::Result;
-use crate::report::ReportInfo;
+use crate::{proof::{self, Proof}, report::ReportInfo};
 use eyre::eyre;
 
 
@@ -307,13 +307,24 @@ pub fn encode_my_proofs_response(
 
 pub fn decode_my_proofs_response(
     key : &secretbox::Key,
+    public_key : &sign::PublicKey,
     nonce :&Vec<u8>,
     cyphertext : &Vec<u8>,
-) -> Result<MyProofsResponse> {
+) -> Result<Vec<Proof>> {
     if let Some(nonce) = secretbox::Nonce::from_slice(nonce) {
         let decoded_response = secretbox::open(cyphertext, &nonce, key).map_err(|_| eyre!("decode_my_proofs_response: Unable to open secretbox"))?;
-        let response = serde_json::from_slice(&decoded_response)?;
-        Ok(response)
+        let response : MyProofsResponse = serde_json::from_slice(&decoded_response)?;
+        let mut result = vec![];
+
+        for proof in response.proofs.iter() {
+            if let Ok(x) = proof::verify_proof(public_key, proof) {
+                result.push(x);
+            }
+            else {
+                return Err(eyre!("Decode of users at location response failed."))
+            }
+        }     
+        Ok(result)
     } else {
         Err(eyre!("Decode of users at location response failed."))
     }

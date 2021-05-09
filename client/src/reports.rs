@@ -11,7 +11,7 @@ use protos::location_storage::location_storage_client::LocationStorageClient;
 
 use sodiumoxide::crypto::sign;
 use sodiumoxide::crypto::box_;
-use security::status::{LocationReportRequest, MyProofsRequest, decode_my_proofs_response, decode_response_location, encode_location_report, encode_my_proofs_request};
+use security::{proof::Proof, status::{LocationReportRequest, MyProofsRequest, decode_my_proofs_response, decode_response_location, encode_location_report, encode_my_proofs_request}};
 use security::report::{self, Report, success_report};
 
 
@@ -100,7 +100,8 @@ pub async fn request_my_proofs(
     url : Uri,
     sign_key : &sign::SecretKey,
     server_key : &box_::PublicKey,
-) -> Result<()> {
+    public_key : &sign::PublicKey,
+) -> Result<Vec<Proof>> {
 
     let proofs_req = MyProofsRequest::new(epochs);
     let (user_info, epochs, key) = encode_my_proofs_request(sign_key, server_key, &proofs_req, idx);
@@ -112,20 +113,16 @@ pub async fn request_my_proofs(
         user_info,
     });
 
-    let signed_proofs = match client.request_my_proofs(request).await {
+   match client.request_my_proofs(request).await {
         Ok(response) => {
             let response = response.get_ref();
-            if let Ok(x) = decode_my_proofs_response(&key, &response.nonce, &response.proofs) {
-                x
+            if let Ok(x) = decode_my_proofs_response(&key, &public_key, &response.nonce, &response.proofs) {
+                Ok(x)
             } else {
-                return Err(eyre!("obtain_location_report unable to validate server response "));
+                Err(eyre!("obtain_location_report unable to validate server response "))
             }
         }
         Err(status) => return Err(eyre!("ObtainLocationReport failed with code {:?} and message {:?}.",
                             status.code(), status.message())),
-    };
-
-    // TODO do something with proofs and verify them
-
-    Ok(())
+    }
 }

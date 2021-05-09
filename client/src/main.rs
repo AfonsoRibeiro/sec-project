@@ -156,15 +156,24 @@ async fn read_commands(
 
             } if rproofs_pat.is_match(buffer.trim_end()) {
                 let mut epochs = HashSet::new();
-                for epoch in buffer.split(' ') {
+                for epoch in buffer.trim_end().split(' ') {
                     if let Ok(epoch) = epoch.parse::<usize>() {
                         epochs.insert(epoch);
                     }
                 }
-                match reports::request_my_proofs(idx, epochs, server_urls[0].clone(), client_keys.sign_key(), server_keys.public_key(0)).await {
-                    Ok(()) => println!("proofs"),
+                println!("{:?}", epochs);
+                match reports::request_my_proofs(
+                    idx, 
+                    epochs, 
+                    server_urls[0].clone(), 
+                    client_keys.sign_key(),
+                    server_keys.public_key(0), 
+                    client_keys.public_key()
+                ).await {
+                    Ok(proofs) => for proof in proofs.iter() { println!("{:?}", proof) },
                     Err(err) => println!("{:}", err.to_string()),
-                }            } else {
+                }            
+            } else {
                 print_command_msg();
             }
         }
