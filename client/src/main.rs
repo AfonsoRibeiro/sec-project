@@ -173,10 +173,38 @@ async fn read_commands(
             if let Some(cap) = orep_pat.captures(buffer.trim_end()) {
                 let epoch  = cap[2].parse::<usize>();
                 if epoch.is_err() { print_command_msg(); continue; }
-                match reports::obtain_location_report(timeline.clone(), idx, epoch.unwrap(), server_urls[0].clone(), client_keys.sign_key(), server_keys.public_key(0)).await {
-                    Ok((x, y)) => println!("location {:} {:}", x, y),
-                    Err(err) => println!("{:}", err.to_string()),
+                let epoch = epoch.unwrap();
+                let mut responses : FuturesUnordered<_> = server_urls.iter().enumerate().map( 
+                    |(server_id, url)| reports::obtain_location_report(
+                        timeline.clone(),
+                        idx,
+                        epoch,
+                        url.clone(),
+                        client_keys.sign_key(),
+                        server_keys.public_key(server_id),
+                        client_keys.public_key()),
+                    ).collect();
+
+                let mut counter : usize = 0;
+                let mut locations : Vec<(usize, usize)> = Vec::with_capacity(necessary_res+1);
+                loop {
+                    select! {
+                        res = responses.select_next_some() => {
+                            if let Ok(loc) = res {
+                                locations.push(loc);
+                                counter += 1;
+                            }
+            
+                            if counter > necessary_res {
+                                println!("Success!");
+                                break ;
+                            }
+                        }
+                        complete => break,
+                    }
                 }
+
+                //println!("location {:} {:}", x, y)
 
             } if rproofs_pat.is_match(buffer.trim_end()) {
                 let mut epochs = HashSet::new();

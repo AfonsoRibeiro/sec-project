@@ -137,8 +137,8 @@ pub async fn get_proofs(timeline : Arc<Timeline>, idx : usize, epoch : usize) ->
         |&id_dest| request_location_proof(idx, epoch, id_dest)
     ).collect();
 
-    let mut report : Vec<Vec<u8>> = Vec::with_capacity(nec_proofs);
-    let mut idx : Vec<usize> = Vec::with_capacity(nec_proofs);  // Number of proofs needed
+    let mut report : Vec<Vec<u8>> = Vec::with_capacity(nec_proofs + 1);
+    let mut idx : Vec<usize> = Vec::with_capacity(nec_proofs + 1);  // Number of proofs needed
 
     loop {
         select! {

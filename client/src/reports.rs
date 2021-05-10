@@ -61,6 +61,7 @@ pub async fn obtain_location_report(
     url : Uri,
     sign_key : &sign::SecretKey,
     server_key : &box_::PublicKey,
+    public_key : &sign::PublicKey,
 )-> Result<(usize, usize)> {
 
     let loc_report = LocationReportRequest::new(idx, epoch);
