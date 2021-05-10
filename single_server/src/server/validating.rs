@@ -89,7 +89,7 @@ impl LocationStorage for MyLocationStorage {
             &request.report_info) {
             info
         } else {
-            return Err(Status::permission_denied("Unhable to decrept sealed container"));
+            return Err(Status::permission_denied("Unhable to decrypt sealed container"));
         };
 
         let client_sign_key = if let Some(ck) = self.server_keys.client_sign_key(info.idx()) {
@@ -117,6 +117,13 @@ impl LocationStorage for MyLocationStorage {
             Err(_) => return  Err(Status::permission_denied("Unable to decrypt report"))
         };
 
+        if !self.storage.report_not_submitted_at_epoch(report.epoch(), info.idx()) {
+            let nonce = secretbox::gen_nonce();
+            return Ok(Response::new(SubmitLocationReportResponse {
+                nonce : nonce.0.to_vec(),
+                ok : secretbox::seal(b"", &nonce, info.key()),
+            }));
+        }
 
         println!("Checking proofs from {:}", info.idx());
         if self.check_valid_location_report(info.idx(), &report) {

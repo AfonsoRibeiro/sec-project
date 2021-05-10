@@ -76,6 +76,14 @@ impl Timeline {
         }
     }
 
+    pub fn report_not_submitted_at_epoch(&self, epoch: usize, idx: usize) -> bool {
+        if let Some(reports_epoch) = self.routes.read().unwrap().get(&epoch) {
+            !reports_epoch.read().unwrap().contains_key(&idx)
+        }else {
+            true
+        }
+    }
+
     pub fn add_user_location_at_epoch(&self, epoch: usize, (pos_x, pos_y) : (usize, usize), idx: usize, report : Vec<u8>) -> Result<()>{
         if self.blacklist.read().unwrap().contains(&idx) {
             return Err(eyre!("Malicious user detected!"));
@@ -88,16 +96,15 @@ impl Timeline {
             let mut routes = self.routes.write().unwrap();
             if let Some(user_pos) =  routes.get(&epoch) {
                 let mut writable_user_pos = user_pos.write().unwrap();
-                if let Some(report) = writable_user_pos.insert(idx,report) {
-                    if report.loc != (pos_x, pos_y) {
-                        writable_user_pos.remove(&idx);
+                if let Some(user_pos) =  writable_user_pos.get(&idx) {
+                    if user_pos.loc != (pos_x, pos_y) {
                         self.blacklist.write().unwrap().insert(idx);
-                        return Err(eyre!("Two positions submitted for the same epoch"));
-                    } else {
-                        return Ok(()); //client resubmited report, no problem
+                        return Err(eyre!("Two different positions submitted for the same epoch"));
                     }
+                }else{
+                    writable_user_pos.insert(idx,report);
                 }
-
+                return Ok(());
             } else {
                 let mut users_loc = HashMap::new();
                 users_loc.insert(idx, report);
