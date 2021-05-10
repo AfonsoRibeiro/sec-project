@@ -5,7 +5,7 @@ use sodiumoxide::crypto::{box_, sign};
 use status::{UsersAtLocationRequest, encode_location_report, encode_users_at_location_report};
 use tonic::transport::Uri;
 
-use security::status::{self, LocationReportRequest};
+use security::{report, status::{self, LocationReportRequest}};
 
 use protos::location_master::location_master_client::LocationMasterClient;
 use protos::location_master::{ObtainLocationReportRequest, ObtainUsersAtLocationRequest};
@@ -18,6 +18,7 @@ pub async fn obtain_location_report(
     url : Uri,
     sign_key : &sign::SecretKey,
     server_key : &box_::PublicKey,
+    client_public_key : &sign::PublicKey
 ) -> Result<(usize, usize)> {
 
     let mut client = LocationMasterClient::connect(url).await?;
@@ -30,11 +31,15 @@ pub async fn obtain_location_report(
         info
     });
 
-    let loc = match client.obtain_location_report(request).await {
+    let report = match client.obtain_location_report(request).await {
         Ok(response) => {
             let response = response.get_ref();
-            if let Ok(x) = status::decode_response_location(&key, &response.nonce, &response.location) {
-                x
+            if let Ok(res) = status::decode_response_location(&key, &response.nonce, &response.location) {
+                if let Ok(report) = report::verify_report(client_public_key, res.report) {
+                    report
+                } else {
+                    return  Err(eyre!("obtain_location_report unable to verify report"));
+                }
             } else {
                 return Err(eyre!("obtain_location_report unable to validate server response "));
             }
@@ -43,7 +48,7 @@ pub async fn obtain_location_report(
                             status.code(), status.message())),
     };
 
-    let (x, y) = loc.pos;
+    let (x, y) = report.loc();
     if x < grid_size && y < grid_size {
         Ok((x, y))
     } else {

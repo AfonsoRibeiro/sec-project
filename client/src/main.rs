@@ -12,7 +12,7 @@ use structopt::StructOpt;
 use regex::Regex;
 
 
-use tokio::time::{interval_at, Duration, Instant, sleep};
+use tokio::time::{interval_at, Duration, Instant};
 use tokio::io::{self, AsyncBufReadExt, BufReader};
 use tonic::transport::Uri;
 
@@ -22,7 +22,7 @@ use security::{key_management::{
     ServerPublicKey,
     retrieve_client_keys,
     retrieve_servers_public_keys,
-}, report::Report};
+}, proof::Proof, report::Report};
 
 #[derive(StructOpt)]
 #[structopt(name = "Client", about = "Reporting and verifying locations since 99.")]
@@ -91,7 +91,7 @@ async fn reports_generator(
         let (proofs, idxs_ass) = proofing_system::get_proofs(timeline.clone(), idx, epoch).await;
         if proofs.len() > timeline.f_line && proofs.len() == idxs_ass.len() {
             let report = Report::new(epoch, (loc_x, loc_y), idx, idxs_ass, proofs);
-            let mut responses : FuturesUnordered<_> = server_urls.iter().enumerate().map( 
+            let mut responses : FuturesUnordered<_> = server_urls.iter().enumerate().map(
                 |(server_id, url)| reports::submit_location_report(
                     idx,
                     &report,
@@ -108,7 +108,7 @@ async fn reports_generator(
                         if res.is_ok() {
                             counter += 1;
                         }
-        
+
                         if counter > necessary_res {
                             println!("Success!");
                             break ;
@@ -174,28 +174,28 @@ async fn read_commands(
                 let epoch  = cap[2].parse::<usize>();
                 if epoch.is_err() { print_command_msg(); continue; }
                 let epoch = epoch.unwrap();
-                let mut responses : FuturesUnordered<_> = server_urls.iter().enumerate().map( 
-                    |(server_id, url)| reports::obtain_location_report(
-                        timeline.clone(),
-                        idx,
-                        epoch,
-                        url.clone(),
-                        client_keys.sign_key(),
-                        server_keys.public_key(server_id),
-                        client_keys.public_key()),
+                let mut responses : FuturesUnordered<_> = server_urls.iter().enumerate().map(
+                    |(server_id, url)|
+                        reports::obtain_location_report(
+                            timeline.clone(),
+                            idx,
+                            epoch,
+                            url.clone(),
+                            client_keys.sign_key(),
+                            server_keys.public_key(server_id),
+                            client_keys.public_key()
+                        )
                     ).collect();
 
-                let mut counter : usize = 0;
-                let mut locations : Vec<(usize, usize)> = Vec::with_capacity(necessary_res+1);
+                let mut locations : Vec<(usize, usize)> = Vec::with_capacity(necessary_res + 1);
                 loop {
                     select! {
                         res = responses.select_next_some() => {
                             if let Ok(loc) = res {
                                 locations.push(loc);
-                                counter += 1;
                             }
-            
-                            if counter > necessary_res {
+
+                            if locations.len() > necessary_res {
                                 println!("Success!");
                                 break ;
                             }
@@ -204,7 +204,7 @@ async fn read_commands(
                     }
                 }
 
-                //println!("location {:} {:}", x, y)
+                println!("location {:?}", locations); // TODO only print most recent one
 
             } if rproofs_pat.is_match(buffer.trim_end()) {
                 let mut epochs = HashSet::new();
@@ -213,18 +213,38 @@ async fn read_commands(
                         epochs.insert(epoch);
                     }
                 }
-                println!("{:?}", epochs);
-                match reports::request_my_proofs(
-                    idx, 
-                    epochs, 
-                    server_urls[0].clone(), 
-                    client_keys.sign_key(),
-                    server_keys.public_key(0), 
-                    client_keys.public_key()
-                ).await {
-                    Ok(proofs) => for proof in proofs.iter() { println!("{:?}", proof) },
-                    Err(err) => println!("{:}", err.to_string()),
-                }            
+
+                let mut responses : FuturesUnordered<_> = server_urls.iter().enumerate().map(
+                    |(server_id, url)|
+                        reports::request_my_proofs(
+                            idx,
+                            epochs.clone(),
+                            url.clone(),
+                            client_keys.sign_key(),
+                            server_keys.public_key(server_id),
+                            client_keys.public_key()
+                        )
+                    ).collect();
+
+                let mut proofs_res : Vec<Vec<Proof>> = Vec::with_capacity(necessary_res + 1);
+                loop {
+                    select! {
+                        res = responses.select_next_some() => {
+                            if let Ok(loc) = res {
+                                proofs_res.push(loc);
+                            }
+
+                            if proofs_res.len() > necessary_res {
+                                println!("Success!");
+                                break ;
+                            }
+                        }
+                        complete => break,
+                    }
+                }
+
+                println!("{:?}", proofs_res);  // TODO only print most recent one
+
             } else {
                 print_command_msg();
             }

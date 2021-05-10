@@ -39,6 +39,7 @@ pub async fn get_submited_report () {
                 server_url,
                 client_keys.sign_key(),
                 &server_key[0],
+                client_keys.public_key(),
             ).await;
 
         assert!(loc_res.is_ok());
@@ -71,6 +72,7 @@ pub async fn get_not_mine_submitted_report () {
             server_url,
             client_keys.sign_key(),
             &server_key[0],
+            client_keys.public_key(),
         ).await;
 
     assert!(loc_res.is_err());
@@ -96,6 +98,7 @@ pub async fn get_not_submitted_yet_report () {
             server_url,
             client_keys.sign_key(),
             &server_key[0],
+            client_keys.public_key(),
         ).await;
 
     assert!(loc_res.is_err());

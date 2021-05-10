@@ -47,13 +47,13 @@ impl LocationReportRequest {
 
 #[derive(Debug,Serialize,Deserialize)]
 pub struct LocationReportResponse {
-    pub pos : (usize,usize)
+    pub report : Vec<u8>,
 }
 
 impl LocationReportResponse {
-    pub fn new(pos_x : usize, pos_y : usize) -> LocationReportResponse {
+    pub fn new(report : Vec<u8>) -> LocationReportResponse {
         LocationReportResponse {
-            pos : (pos_x, pos_y),
+            report,
         }
     }
 }
@@ -98,13 +98,12 @@ pub fn decode_loc_report(
 
 pub fn encode_loc_response(
     key : &secretbox::Key,
-    x : usize,
-    y : usize,
+    report : Vec<u8>,
 ) -> (Vec<u8>, secretbox::Nonce) {
 
     let nonce = secretbox::gen_nonce();
 
-    let loc = LocationReportResponse::new(x, y);
+    let loc = LocationReportResponse::new(report);
     let plaintext = serde_json::to_vec(&loc).unwrap();
     (secretbox::seal(&plaintext, &nonce, key), nonce)
 }

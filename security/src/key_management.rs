@@ -34,17 +34,27 @@ impl ClientKeys {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct HAClientKeys {
     private_key : sign::SecretKey,
+    client_keys : HashMap<usize, sign::PublicKey>,
 }
 
 impl HAClientKeys {
-    fn new(private_key : sign::SecretKey,) -> HAClientKeys {
+    fn new(private_key : sign::SecretKey, client_keys : HashMap<usize, sign::PublicKey>,) -> HAClientKeys {
         HAClientKeys {
             private_key,
+            client_keys,
         }
     }
 
     #[allow(dead_code)]
     pub fn sign_key(&self) -> &sign::SecretKey { &self.private_key }
+    #[allow(dead_code)]
+    pub fn client_sign_key(&self, idx : usize) -> Option<&sign::PublicKey> {
+        if let Some(sign) = self.client_keys.get(&idx) {
+            Some(sign)
+        } else {
+            None
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -107,14 +117,14 @@ impl ServerKeys{
 pub fn save_keys(n_clients : usize, n_servers : usize, keys_dir : String) -> Result<()> {
     fs::create_dir_all(&keys_dir)?;
 
-    let mut key_pairs = HashMap::new();
+    let mut clients_public_keys = HashMap::new();
     let mut client_secret_pairs =  HashMap::new();
     let mut servers_public_keys = vec![];
 
     for index in 0..n_clients { //each index correspond to the idx of client
         let (signpk, signsk) = sign::gen_keypair();
 
-        key_pairs.insert(index, signpk);
+        clients_public_keys.insert(index, signpk);
 
         let ck = ClientKeys::new(signsk, signpk);
         client_secret_pairs.insert(index, ck);
@@ -135,7 +145,7 @@ pub fn save_keys(n_clients : usize, n_servers : usize, keys_dir : String) -> Res
             &keys_dir,
             server_idx,
             ServerKeys::new(
-                key_pairs.clone(),
+                clients_public_keys.clone(),
                 serversk,
                 servers_public_keys[server_idx],
                 ha_pk)
@@ -143,7 +153,7 @@ pub fn save_keys(n_clients : usize, n_servers : usize, keys_dir : String) -> Res
     }
 
 
-    save_ha_client_keys(&keys_dir, HAClientKeys::new(ha_sk))?;
+    save_ha_client_keys(&keys_dir, HAClientKeys::new(ha_sk, clients_public_keys))?;
     save_servers_public_keys(&keys_dir, ServerPublicKey::new(servers_public_keys))?;
 
     Ok(())

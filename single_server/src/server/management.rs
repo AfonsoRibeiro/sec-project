@@ -63,9 +63,9 @@ impl LocationMaster for MyLocationMaster {
             }
             Err(_) => return  Err(Status::permission_denied("Unable to decrypt report"))
         };
-        match self.storage.get_user_location_at_epoch(loc_req.epoch(), loc_req.idx()) {
-            Some((x,y )) =>  {
-                let (location, nonce) = encode_loc_response(info.key(), x, y);
+        match self.storage.get_user_report_at_epoch(loc_req.epoch(), loc_req.idx()) {
+            Some(report) =>  {
+                let (location, nonce) = encode_loc_response(info.key(), report.clone());
                 Ok( Response::new(ObtainLocationReportResponse {
                     nonce : nonce.0.to_vec(),
                     location,

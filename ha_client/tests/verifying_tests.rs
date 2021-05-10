@@ -38,7 +38,9 @@ pub async fn get_submited_report () {
                 EPOCH,
                 GRID_SIZE,
                 server_url,
-                &ha_client_keys.sign_key(), &server_key[0],
+                &ha_client_keys.sign_key(),
+                &server_key[0],
+                ha_client_keys.client_sign_key(0).unwrap(),
             ).await;
 
         assert!(loc_res.is_ok());
@@ -65,7 +67,8 @@ pub async fn get_not_submited_report () {
             GRID_SIZE,
             server_url,
             &ha_client_keys.sign_key(),
-            &server_key[0]
+            &server_key[0],
+            ha_client_keys.client_sign_key(0).unwrap(),
         ).await;
 
     assert!(loc_res.is_err());
@@ -87,8 +90,9 @@ pub async fn get_invalid_id_report () {
             EPOCH,
             GRID_SIZE,
             server_url,
-            &ha_client_keys.sign_key(),
-            &server_key[0]
+            ha_client_keys.sign_key(),
+            &server_key[0],
+            ha_client_keys.client_sign_key(0).unwrap(),
         ).await;
 
     assert!(loc_res.is_err());
@@ -111,7 +115,8 @@ pub async fn get_location_report_invalid_signature () {
             GRID_SIZE,
             server_url,
             &client_keys.sign_key(),
-            &server_key[0]
+            &server_key[0],
+            client_keys.public_key(),
         ).await;
 
     assert!(loc_res.is_err());

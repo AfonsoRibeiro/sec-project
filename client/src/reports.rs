@@ -11,7 +11,7 @@ use protos::location_storage::location_storage_client::LocationStorageClient;
 
 use sodiumoxide::crypto::sign;
 use sodiumoxide::crypto::box_;
-use security::{proof::Proof, status::{LocationReportRequest, MyProofsRequest, decode_my_proofs_response, decode_response_location, encode_location_report, encode_my_proofs_request}};
+use security::{proof::Proof, report::verify_report, status::{LocationReportRequest, MyProofsRequest, decode_my_proofs_response, decode_response_location, encode_location_report, encode_my_proofs_request}};
 use security::report::{self, Report, success_report};
 
 
@@ -74,11 +74,15 @@ pub async fn obtain_location_report(
         user_info
     });
 
-    let loc = match client.obtain_location_report(request).await {
+    let report = match client.obtain_location_report(request).await {
         Ok(response) => {
             let response = response.get_ref();
-            if let Ok(x) = decode_response_location(&key, &response.nonce, &response.location) {
-                x
+            if let Ok(res) = decode_response_location(&key, &response.nonce, &response.location) {
+                if let Ok(report) = verify_report(public_key, res.report) {
+                    report
+                } else {
+                    return  Err(eyre!("obtain_location_report unable to verify report"));
+                }
             } else {
                 return Err(eyre!("obtain_location_report unable to validate server response "));
             }
@@ -87,7 +91,7 @@ pub async fn obtain_location_report(
                             status.code(), status.message())),
     };
 
-    let (x, y) = loc.pos;
+    let (x, y) = report.loc();
     if timeline.valid_pos(x, y) {
         Ok((x, y))
     } else {

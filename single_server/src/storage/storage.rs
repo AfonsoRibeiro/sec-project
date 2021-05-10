@@ -180,10 +180,10 @@ impl Timeline {
         }
     }
 
-    pub fn get_user_location_at_epoch(&self, epoch: usize, idx: usize) -> Option<(usize, usize)> {
+    pub fn get_user_report_at_epoch(&self, epoch: usize, idx: usize) -> Option<Vec<u8>> {
         if let Some(user_loc ) = self.routes.read().unwrap().get(&epoch) {
             if let Some(position) = user_loc.read().unwrap().get(&idx){
-                return Some(position.loc);
+                return Some(position.report.clone());
             }
         }
         None
@@ -298,10 +298,9 @@ mod tests {
 
         assert!(storage.add_user_location_at_epoch(EPOCH, (POS_X, POS_Y), IDX, "report".as_bytes().to_vec()).is_ok());
 
-        let (x, y) = storage.get_user_location_at_epoch(EPOCH, IDX).unwrap();
+        let report = storage.get_user_report_at_epoch(EPOCH, IDX).unwrap();
 
-        assert_eq!(POS_X, x);
-        assert_eq!(POS_Y, y);
+        assert_eq!(report, "report".as_bytes().to_vec());
 
         let users = storage.get_users_at_epoch_at_location(EPOCH, (POS_X, POS_Y)).unwrap();
 

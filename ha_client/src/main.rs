@@ -59,16 +59,23 @@ async fn read_commands(grid_size : usize, server : Uri, ha_keys : &HAClientKeys,
                 let epoch  = cap[3].parse::<usize>();
                 if id.is_err() || epoch.is_err() { print_command_msg(); continue; }
 
-                match verifying::obtain_location_report(
-                    id.unwrap(),
-                    epoch.unwrap(),
-                    grid_size,
-                    server.clone(),
-                    &ha_keys.sign_key(),
-                    &server_keys.public_key(0)
-                ).await {
-                    Ok((x, y)) => println!("location {:} {:}", x, y),
-                    Err(err) => println!("{:}", err.to_string()),
+                let idx = id.unwrap();
+
+                if let Some(client_pub_key) = ha_keys.client_sign_key(idx) {
+                    match verifying::obtain_location_report(
+                        idx,
+                        epoch.unwrap(),
+                        grid_size,
+                        server.clone(),
+                        &ha_keys.sign_key(),
+                        &server_keys.public_key(0),
+                        client_pub_key,
+                    ).await {
+                        Ok((x, y)) => println!("location {:} {:}", x, y),
+                        Err(err) => println!("{:}", err.to_string()),
+                    }
+                } else {
+                    println!("Invalid idx for client");
                 }
 
             } else if let Some(cap) = o_users_pat.captures(buffer.trim_end()) {
