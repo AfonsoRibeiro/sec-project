@@ -4,6 +4,9 @@ mod reports;
 use eyre::eyre;
 use color_eyre::eyre::Result;
 
+use futures::stream::{FuturesUnordered, StreamExt};
+use futures::select;
+
 use std::{collections::HashSet, sync::Arc, usize};
 use structopt::StructOpt;
 use regex::Regex;
@@ -44,6 +47,9 @@ async fn main() -> Result<()> {
 
     let opt = Opt::from_args();
 
+    let f_servers = (opt.n_servers - 1) / 3;
+    let necessary_res= f_servers + opt.n_servers / 2;
+
     let timeline = Arc::new(retrieve_timeline(&opt.grid_file)?);
 
     if !timeline.is_point(opt.idx) {
@@ -61,9 +67,9 @@ async fn main() -> Result<()> {
     let server_url  = get_servers_url(opt.n_servers);
 
     println!("{:?}", server_url);
-    tokio::spawn(epochs_generator(timeline.clone(), opt.idx, server_url.clone(), client_keys.clone(), server_keys.clone()));
+    tokio::spawn(epochs_generator(timeline.clone(), opt.idx, server_url.clone(), client_keys.clone(), server_keys.clone(), necessary_res));
 
-    read_commands(timeline.clone(), opt.idx, server_url, client_keys, server_keys).await;
+    read_commands(timeline.clone(), opt.idx, server_url, client_keys, server_keys, necessary_res).await;
 
     let _x = proofer.await; // Not important result just dont end
 
@@ -76,23 +82,39 @@ async fn reports_generator(
     epoch : usize,
     server_urls: Arc<Vec<Uri>>,
     client_keys : Arc<ClientKeys>,
-    server_key : Arc<ServerPublicKey>, ) {
+    server_key : Arc<ServerPublicKey>,
+    necessary_res : usize,
+) {
+    //TODO: server order -> random
 
     if let Some((loc_x, loc_y)) = timeline.get_location_at_epoch(idx, epoch) {
         let (proofs, idxs_ass) = proofing_system::get_proofs(timeline.clone(), idx, epoch).await;
         if proofs.len() > timeline.f_line && proofs.len() == idxs_ass.len() {
             let report = Report::new(epoch, (loc_x, loc_y), idx, idxs_ass, proofs);
-            for (server_id, server_url) in server_urls.iter().enumerate() {
-                println!("connecting to {:?}", server_url);
-                while reports::submit_location_report(
+            let mut responses : FuturesUnordered<_> = server_urls.iter().enumerate().map( 
+                |(server_id, url)| reports::submit_location_report(
                     idx,
                     &report,
-                    server_url,
+                    url,
                     client_keys.sign_key(),
                     server_key.public_key(server_id),
-                ).await.is_err() {
-                    println!("Unhable to submit report to server {:?}", server_url.clone());
-                    sleep(Duration::from_millis(500)).await; // allow time for server recovery
+                )
+            ).collect();
+
+            let mut counter : usize = 0;
+            loop {
+                select! {
+                    res = responses.select_next_some() => {
+                        if res.is_ok() {
+                            counter += 1;
+                        }
+        
+                        if counter > necessary_res {
+                            println!("Success!");
+                            break ;
+                        }
+                    }
+                    complete => break,
                 }
             }
         } else {
@@ -109,6 +131,7 @@ async fn epochs_generator(
     server_urls : Arc<Vec<Uri>>,
     client_keys : Arc<ClientKeys>,
     server_keys : Arc<ServerPublicKey>,
+    necessary_res : usize,
 ) -> Result<()> {
 
     let start = Instant::now() + Duration::from_millis(2000);
@@ -119,7 +142,7 @@ async fn epochs_generator(
 
         println!("Client {:} entered epoch {:}/{:}.", idx, epoch, timeline.epochs()-1);
 
-        tokio::spawn(reports_generator(timeline.clone(), idx, epoch, server_urls.clone(), client_keys.clone(), server_keys.clone()));
+        tokio::spawn(reports_generator(timeline.clone(), idx, epoch, server_urls.clone(), client_keys.clone(), server_keys.clone(), necessary_res));
     }
     Ok(())
 }
@@ -131,6 +154,7 @@ async fn read_commands(
     server_urls :  Arc<Vec<Uri>>,
     client_keys : Arc<ClientKeys>,
     server_keys : Arc<ServerPublicKey>,
+    necessary_res : usize,
 ){
     print_command_msg();
 
