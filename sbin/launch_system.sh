@@ -40,4 +40,4 @@ done
 
 echo "Starting ha_client"
 echo
-./target/$dir/ha_client --keys $keys_dir
+./target/$dir/ha_client --n_servers $n_servers --keys $keys_dir

@@ -64,12 +64,11 @@ async fn main() -> Result<()> {
     let proofer =
         tokio::spawn(proofing_system::start_proofer(opt.idx, timeline.clone(), client_keys.sign_key().clone()));
 
-    let server_url  = get_servers_url(opt.n_servers);
+    let server_urls  = get_servers_url(opt.n_servers);
 
-    println!("{:?}", server_url);
-    tokio::spawn(epochs_generator(timeline.clone(), opt.idx, server_url.clone(), client_keys.clone(), server_keys.clone(), necessary_res));
+    tokio::spawn(epochs_generator(timeline.clone(), opt.idx, server_urls.clone(), client_keys.clone(), server_keys.clone(), necessary_res));
 
-    read_commands(timeline.clone(), opt.idx, server_url, client_keys, server_keys, necessary_res).await;
+    read_commands(timeline.clone(), opt.idx, server_urls, client_keys, server_keys, necessary_res).await;
 
     let _x = proofer.await; // Not important result just dont end
 
@@ -252,7 +251,10 @@ async fn read_commands(
     }
 }
 
-fn print_command_msg() { println!("To obtain a report use: report <epoch>"); }
+fn print_command_msg() {
+    println!("To obtain a report use: report <epoch>");
+    println!("To obtain proofs recieved by server use: proof <epoch>+");
+}
 
 fn get_servers_url(n_servers : usize ) -> Arc<Vec<Uri>> {
     let mut server_urls = vec![];
