@@ -78,7 +78,7 @@ async fn read_commands(
                 let idx = id.unwrap();
                 let epoch = epoch.unwrap();
 
-                let client_pub_key = ha_keys.client_sign_key(idx);
+                let client_pub_key = ha_keys.client_public_key(idx);
 
                 if client_pub_key.is_none() { println!("Invalid idx for client"); continue; }
                 let client_pub_key = client_pub_key.unwrap();
@@ -125,8 +125,9 @@ async fn read_commands(
                     pos_x.unwrap(),
                     pos_y.unwrap(),
                     server_urls[0].clone(),
-                    &ha_keys.sign_key(),
-                    &server_keys.public_key(0)
+                    ha_keys.sign_key(),
+                    &server_keys.public_key(0),
+                    ha_keys.clients_public_keys()
                 ).await {
                     Ok(clients) => println!("clients {:?}", clients),
                     Err(err) => println!("{:}", err.to_string()),

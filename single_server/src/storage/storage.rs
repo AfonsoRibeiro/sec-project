@@ -52,7 +52,7 @@ impl Grid {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Timeline {
-    routes : RwLock<HashMap<usize, RwLock<HashMap<usize, Report>>>>, //epoch -> user id -> location
+    routes : RwLock<HashMap<usize, RwLock<HashMap<usize, Report>>>>, //epoch -> user id -> location/report
     proofs : RwLock<HashMap<usize, RwLock<HashMap<usize, Vec<Vec<u8>> >>>>, // user -> epoch -> proofs_given
     timeline : RwLock<Vec<Grid>>,
     size : usize,
@@ -170,11 +170,19 @@ impl Timeline {
         ((lower_x, lower_y), (upper_x, upper_y))
     }
 
-    pub fn get_users_at_epoch_at_location(&self, epoch: usize, (pos_x, pos_y) : (usize, usize)) -> Option<Vec<usize>> {
+    pub fn get_users_at_epoch_at_location(&self, epoch: usize, (pos_x, pos_y) : (usize, usize)) -> Option<Vec<(usize, Vec<u8>)>> {
         let vec = self.timeline.read().unwrap();
 
-        if vec.len() > epoch && self.valid_pos(pos_x, pos_y){
-            Some(vec[epoch].get_users_at_location(pos_x,pos_y))
+        if vec.len() > epoch && self.valid_pos(pos_x, pos_y) {
+            let mut idxs_reports = vec![];
+            let epoch_map = self.routes.read().unwrap();
+            let epoch_map = epoch_map.get(&epoch).unwrap().read().unwrap();
+            for idx in vec[epoch].get_users_at_location(pos_x,pos_y) {
+                if let Some(report) = epoch_map.get(&idx) {
+                    idxs_reports.push((idx, report.report.clone()));
+                }
+            }
+            Some(idxs_reports)
         } else {
             None
         }
@@ -306,7 +314,7 @@ mod tests {
 
         assert_eq!(1, users.len());
 
-        assert_eq!(IDX, users[0]);
+        assert_eq!((IDX, "report".as_bytes().to_vec()) , users[0]);
     }
 
     #[test]

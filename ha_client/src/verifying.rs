@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use eyre::eyre;
 use color_eyre::eyre::Result;
 
@@ -63,6 +65,7 @@ pub async fn obtain_users_at_location(
     url : Uri,
     sign_key : &sign::SecretKey,
     server_key : &box_::PublicKey,
+    clients_public_keys : &HashMap<usize, sign::PublicKey>
 ) -> Result<Vec<usize>> {
 
     let mut client = LocationMasterClient::connect(url).await?;
@@ -78,8 +81,19 @@ pub async fn obtain_users_at_location(
     match client.obtain_users_at_location(request).await {
         Ok(response) => {
             let response = response.get_ref();
-            if let Ok(idxs) = status::decode_users_at_loc_response(&key, &response.nonce, &response.idxs) {
-                Ok(idxs.idxs)
+            if let Ok(res) = status::decode_users_at_loc_response(&key, &response.nonce, &response.idxs) {
+                let mut idxs = vec![];
+                for (idx, report) in res.idxs_reports.iter() {
+                    if !clients_public_keys.contains_key(idx) {
+                        return Err(eyre!("obtain_location_report unable to find user"));
+                    }
+                    if let Ok(_) = report::verify_report(clients_public_keys.get(idx).unwrap(), report.to_vec()) {
+                        idxs.push(*idx);
+                    }  else {
+                        return Err(eyre!("obtain_location_report unable to validate all users reports"));
+                    }
+                }
+                Ok(idxs)
             } else {
                 return Err(eyre!("obtain_location_report unable to validate server response "));
             }

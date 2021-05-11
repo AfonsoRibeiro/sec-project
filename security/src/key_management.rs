@@ -48,12 +48,16 @@ impl HAClientKeys {
     #[allow(dead_code)]
     pub fn sign_key(&self) -> &sign::SecretKey { &self.private_key }
     #[allow(dead_code)]
-    pub fn client_sign_key(&self, idx : usize) -> Option<&sign::PublicKey> {
+    pub fn client_public_key(&self, idx : usize) -> Option<&sign::PublicKey> {
         if let Some(sign) = self.client_keys.get(&idx) {
             Some(sign)
         } else {
             None
         }
+    }
+    #[allow(dead_code)]
+    pub fn clients_public_keys(&self) -> &HashMap<usize, sign::PublicKey> {
+        &self.client_keys
     }
 }
 

@@ -146,13 +146,13 @@ impl UsersAtLocationRequest {
 
 #[derive(Debug,Serialize,Deserialize)]
 pub struct UsersAtLocationResponse {
-    pub idxs : Vec<usize>
+    pub idxs_reports : Vec<(usize, Vec<u8>)>,
 }
 
 impl UsersAtLocationResponse {
-    pub fn new(idxs : Vec<usize>) -> UsersAtLocationResponse {
+    pub fn new(idxs_reports : Vec<(usize, Vec<u8>)>) -> UsersAtLocationResponse {
         UsersAtLocationResponse {
-            idxs
+            idxs_reports ,
         }
     }
 }
@@ -197,12 +197,12 @@ pub fn decode_users_at_loc_report(
 
 pub fn encode_users_at_loc_response(
     key : &secretbox::Key,
-    idxs : Vec<usize>,
+    idxs_reports : Vec<(usize, Vec<u8>)>,
 ) -> (Vec<u8>, secretbox::Nonce) {
 
     let nonce = secretbox::gen_nonce();
 
-    let loc = UsersAtLocationResponse::new(idxs);
+    let loc = UsersAtLocationResponse::new(idxs_reports);
     let plaintext = serde_json::to_vec(&loc).unwrap();
     (secretbox::seal(&plaintext, &nonce, key), nonce)
 }
