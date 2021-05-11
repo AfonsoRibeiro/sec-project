@@ -90,6 +90,7 @@ async fn reports_generator(
         let (proofs, idxs_ass) = proofing_system::get_proofs(timeline.clone(), idx, epoch).await;
         if proofs.len() > timeline.f_line && proofs.len() == idxs_ass.len() {
             let report = Report::new(epoch, (loc_x, loc_y), idx, idxs_ass, proofs);
+
             let mut responses : FuturesUnordered<_> = server_urls.iter().enumerate().map(
                 |(server_id, url)| reports::submit_location_report(
                     idx,
@@ -109,7 +110,6 @@ async fn reports_generator(
                         }
 
                         if counter > necessary_res {
-                            println!("Success!");
                             break ;
                         }
                     }
@@ -178,7 +178,6 @@ async fn do_get_report_command(
                 }
 
                 if locations.len() > necessary_res {
-                    println!("Success!");
                     break ;
                 }
             }
@@ -219,7 +218,6 @@ async fn do_get_proofs_command(
                 }
 
                 if proofs_res.len() > necessary_res {
-                    println!("Success!");
                     break ;
                 }
             }

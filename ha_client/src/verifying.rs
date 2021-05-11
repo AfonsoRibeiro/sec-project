@@ -87,7 +87,7 @@ pub async fn obtain_users_at_location(
                     if !clients_public_keys.contains_key(idx) {
                         return Err(eyre!("obtain_location_report unable to find user"));
                     }
-                    if let Ok(report) = report::verify_report(clients_public_keys.get(idx).unwrap(), report.to_vec()) { // TODO : verify report loc e epoch
+                    if let Ok(report) = report::verify_report(clients_public_keys.get(idx).unwrap(), report.to_vec()) {
                         if report.epoch() == epoch && report.loc() == (pos_x, pos_y) {
                             idxs.push(*idx);
                         } else {

@@ -44,7 +44,7 @@ impl Grid {
         self.grid[pos_x][pos_y].write().unwrap().insert(idx);
     }
 
-    fn get_users_at_location(&self, pos_x : usize, pos_y : usize) ->Vec<usize> {
+    fn get_users_at_location(&self, pos_x : usize, pos_y : usize) -> Vec<usize> {
         self.grid[pos_x][pos_y].read().unwrap().iter().map(|&idx| idx).collect()
     }
 }
@@ -101,10 +101,9 @@ impl Timeline {
                         self.blacklist.write().unwrap().insert(idx);
                         return Err(eyre!("Two different positions submitted for the same epoch"));
                     }
-                }else{
+                } else {
                     writable_user_pos.insert(idx,report);
                 }
-                return Ok(());
             } else {
                 let mut users_loc = HashMap::new();
                 users_loc.insert(idx, report);
@@ -173,15 +172,20 @@ impl Timeline {
     pub fn get_users_at_epoch_at_location(&self, epoch: usize, (pos_x, pos_y) : (usize, usize)) -> Option<Vec<(usize, Vec<u8>)>> {
         let vec = self.timeline.read().unwrap();
 
+        println!("{:} {:} {:}", epoch, pos_x, pos_y);
+
         if vec.len() > epoch && self.valid_pos(pos_x, pos_y) {
             let mut idxs_reports = vec![];
             let epoch_map = self.routes.read().unwrap();
             let epoch_map = epoch_map.get(&epoch).unwrap().read().unwrap();
-            for idx in vec[epoch].get_users_at_location(pos_x,pos_y) {
+            for idx in vec[epoch].get_users_at_location(pos_x, pos_y) {
                 if let Some(report) = epoch_map.get(&idx) {
                     idxs_reports.push((idx, report.report.clone()));
+                } else {
+                    println!("WHY ME")
                 }
             }
+            println!("Users found {:?}", idxs_reports);
             Some(idxs_reports)
         } else {
             None

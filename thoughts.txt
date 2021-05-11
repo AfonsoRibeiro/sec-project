@@ -5,6 +5,6 @@ TODO:
 
     Keystore /* As soon as possible */
 
-    Timestamp nos writes
+    Timestamp nos writes /* STEP 2 || 4 */
 
 

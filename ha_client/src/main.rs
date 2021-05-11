@@ -60,6 +60,7 @@ async fn do_report_command(
     idx : usize,
     epoch : usize,
 ) {
+
     let client_pub_key = ha_keys.client_public_key(idx);
 
     if client_pub_key.is_none() { println!("Invalid idx for client"); return; }
@@ -87,7 +88,6 @@ async fn do_report_command(
                 }
 
                 if locations.len() > necessary_res {
-                    println!("Success!");
                     break ;
                 }
             }
@@ -95,7 +95,7 @@ async fn do_report_command(
         }
     }
 
-    print!("{:?}", locations);
+    println!("{:?}", locations);
 }
 
 async fn do_get_users_at_loc_command(
@@ -107,6 +107,8 @@ async fn do_get_users_at_loc_command(
     pos_x : usize,
     pos_y : usize,
 ) {
+
+    println!("{:} {:} {:}", epoch, pos_x, pos_y);
     let mut responses : FuturesUnordered<_> = server_urls.iter().enumerate().map(
         |(server_id, url)|
             verifying::obtain_users_at_location(
@@ -129,7 +131,6 @@ async fn do_get_users_at_loc_command(
                 }
 
                 if all_users.len() > necessary_res {
-                    println!("Success!");
                     break ;
                 }
             }
@@ -137,7 +138,7 @@ async fn do_get_users_at_loc_command(
         }
     }
 
-    print!("{:?}", all_users);
+    println!("{:?}", all_users);
 
 }
 
