@@ -51,6 +51,96 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
+async fn do_report_command(
+    grid_size : usize,
+    server_urls :  Arc<Vec<Uri>>,
+    ha_keys : &HAClientKeys,
+    server_keys : &ServerPublicKey,
+    necessary_res : usize,
+    idx : usize,
+    epoch : usize,
+) {
+    let client_pub_key = ha_keys.client_public_key(idx);
+
+    if client_pub_key.is_none() { println!("Invalid idx for client"); return; }
+    let client_pub_key = client_pub_key.unwrap();
+
+    let mut responses : FuturesUnordered<_> = server_urls.iter().enumerate().map(
+        |(server_id, url)|
+            verifying::obtain_location_report(
+                idx,
+                epoch,
+                grid_size,
+                url.clone(),
+                ha_keys.sign_key(),
+                server_keys.public_key(server_id),
+                client_pub_key,
+            )
+        ).collect();
+
+    let mut locations : Vec<(usize, usize)> = Vec::with_capacity(necessary_res + 1);
+    loop {
+        select! {
+            res = responses.select_next_some() => {
+                if let Ok(loc) = res {
+                    locations.push(loc);
+                }
+
+                if locations.len() > necessary_res {
+                    println!("Success!");
+                    break ;
+                }
+            }
+            complete => break,
+        }
+    }
+
+    print!("{:?}", locations);
+}
+
+async fn do_get_users_at_loc_command(
+    server_urls :  Arc<Vec<Uri>>,
+    ha_keys : &HAClientKeys,
+    server_keys : &ServerPublicKey,
+    necessary_res : usize,
+    epoch : usize,
+    pos_x : usize,
+    pos_y : usize,
+) {
+    let mut responses : FuturesUnordered<_> = server_urls.iter().enumerate().map(
+        |(server_id, url)|
+            verifying::obtain_users_at_location(
+                epoch,
+                pos_x,
+                pos_y,
+                url.clone(),
+                ha_keys.sign_key(),
+                server_keys.public_key(server_id),
+                ha_keys.clients_public_keys()
+            )
+        ).collect();
+
+    let mut all_users : Vec<Vec<usize>> = Vec::with_capacity(necessary_res + 1);
+    loop {
+        select! {
+            res = responses.select_next_some() => {
+                if let Ok(users) = res {
+                    all_users.push(users);
+                }
+
+                if all_users.len() > necessary_res {
+                    println!("Success!");
+                    break ;
+                }
+            }
+            complete => break,
+        }
+    }
+
+    print!("{:?}", all_users);
+
+}
+
 async fn read_commands(
     grid_size : usize,
     server_urls :  Arc<Vec<Uri>>,
@@ -71,67 +161,36 @@ async fn read_commands(
         reader.read_line(&mut buffer).await.unwrap();
         {
             if let Some(cap) = o_rep_pat.captures(buffer.trim_end()) {
-                let id  = cap[2].parse::<usize>();
+                let idx  = cap[2].parse::<usize>();
                 let epoch  = cap[3].parse::<usize>();
-                if id.is_err() || epoch.is_err() { print_command_msg(); continue; }
+                if idx.is_err() || epoch.is_err() { print_command_msg(); continue; }
 
-                let idx = id.unwrap();
-                let epoch = epoch.unwrap();
-
-                let client_pub_key = ha_keys.client_public_key(idx);
-
-                if client_pub_key.is_none() { println!("Invalid idx for client"); continue; }
-                let client_pub_key = client_pub_key.unwrap();
-
-                let mut responses : FuturesUnordered<_> = server_urls.iter().enumerate().map(
-                    |(server_id, url)|
-                        verifying::obtain_location_report(
-                            idx,
-                            epoch,
-                            grid_size,
-                            url.clone(),
-                            ha_keys.sign_key(),
-                            server_keys.public_key(server_id),
-                            client_pub_key,
-                        )
-                    ).collect();
-
-                let mut locations : Vec<(usize, usize)> = Vec::with_capacity(necessary_res + 1);
-                loop {
-                    select! {
-                        res = responses.select_next_some() => {
-                            if let Ok(loc) = res {
-                                locations.push(loc);
-                            }
-
-                            if locations.len() > necessary_res {
-                                println!("Success!");
-                                break ;
-                            }
-                        }
-                        complete => break,
-                    }
-                }
-
-                print!("{:?}", locations);
+                do_report_command(
+                    grid_size,
+                    server_urls.clone(),
+                    ha_keys,
+                    server_keys,
+                    necessary_res,
+                    idx.unwrap(),
+                    epoch.unwrap()
+                ).await;
 
             } else if let Some(cap) = o_users_pat.captures(buffer.trim_end()) {
                 let epoch  = cap[2].parse::<usize>();
                 let pos_x  = cap[3].parse::<usize>();
                 let pos_y  = cap[4].parse::<usize>();
                 if epoch.is_err() || pos_x.is_err() || pos_y.is_err() { print_command_msg(); continue; }
-                match verifying::obtain_users_at_location(
+
+                do_get_users_at_loc_command(
+                    server_urls.clone(),
+                    ha_keys,
+                    server_keys,
+                    necessary_res,
                     epoch.unwrap(),
                     pos_x.unwrap(),
                     pos_y.unwrap(),
-                    server_urls[0].clone(),
-                    ha_keys.sign_key(),
-                    &server_keys.public_key(0),
-                    ha_keys.clients_public_keys()
-                ).await {
-                    Ok(clients) => println!("clients {:?}", clients),
-                    Err(err) => println!("{:}", err.to_string()),
-                }
+                ).await
+
             } else {
                 print_command_msg();
             }

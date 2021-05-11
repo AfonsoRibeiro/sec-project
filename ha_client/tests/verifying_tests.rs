@@ -40,7 +40,7 @@ pub async fn get_submited_report () {
                 server_url,
                 &ha_client_keys.sign_key(),
                 &server_key[0],
-                ha_client_keys.client_sign_key(0).unwrap(),
+                ha_client_keys.client_public_key(0).unwrap(),
             ).await;
 
         assert!(loc_res.is_ok());
@@ -68,7 +68,7 @@ pub async fn get_not_submited_report () {
             server_url,
             &ha_client_keys.sign_key(),
             &server_key[0],
-            ha_client_keys.client_sign_key(0).unwrap(),
+            ha_client_keys.client_public_key(0).unwrap(),
         ).await;
 
     assert!(loc_res.is_err());
@@ -92,7 +92,7 @@ pub async fn get_invalid_id_report () {
             server_url,
             ha_client_keys.sign_key(),
             &server_key[0],
-            ha_client_keys.client_sign_key(0).unwrap(),
+            ha_client_keys.client_public_key(0).unwrap(),
         ).await;
 
     assert!(loc_res.is_err());
@@ -152,8 +152,9 @@ pub async fn get_users_at_location_at_epoch () {
             POS_X,
             POS_Y,
             server_url,
-            &ha_client_keys.sign_key(),
-            &server_key[0]
+            ha_client_keys.sign_key(),
+            &server_key[0],
+            ha_client_keys.clients_public_keys(),
         ).await;
 
     assert!(users_res.is_ok());
@@ -183,8 +184,9 @@ pub async fn get_users_bad_location () {
             GRID_SIZE,
             POS_Y,
             server_url,
-            &ha_client_keys.sign_key(),
-            &server_key[0]
+            ha_client_keys.sign_key(),
+            &server_key[0],
+            ha_client_keys.clients_public_keys(),
         ).await;
 
     assert!(users_res.is_err());
@@ -206,8 +208,9 @@ pub async fn get_users_not_existent_epoch () {
             POS_X,
             POS_Y,
             server_url,
-            &ha_client_keys.sign_key(),
-            &server_key[0]
+            ha_client_keys.sign_key(),
+            &server_key[0],
+            ha_client_keys.clients_public_keys(),
         ).await;
 
     assert!(users_res.is_err());
@@ -223,14 +226,17 @@ pub async fn get_users_invalid_signature () {
     let client_keys = common::get_client_keys(IDX);
     let server_key = common::get_pub_server_key();
 
+    let ha_client_keys = common::get_ha_client_keys();
+
     let users_res =
         obtain_users_at_location(
             EPOCH,
             POS_X,
             POS_Y,
             server_url,
-            &client_keys.sign_key(),
-            &server_key[0]
+            client_keys.sign_key(),
+            &server_key[0],
+            ha_client_keys.clients_public_keys(),
         ).await;
 
     assert!(users_res.is_err());

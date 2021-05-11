@@ -146,6 +146,89 @@ async fn epochs_generator(
     Ok(())
 }
 
+async fn do_get_report_command(
+    timeline : Arc<Timeline>,
+    idx : usize,
+    server_urls :  Arc<Vec<Uri>>,
+    client_keys : Arc<ClientKeys>,
+    server_keys : Arc<ServerPublicKey>,
+    necessary_res : usize,
+    epoch : usize,
+
+) {
+    let mut responses : FuturesUnordered<_> = server_urls.iter().enumerate().map(
+        |(server_id, url)|
+            reports::obtain_location_report(
+                timeline.clone(),
+                idx,
+                epoch,
+                url.clone(),
+                client_keys.sign_key(),
+                server_keys.public_key(server_id),
+                client_keys.public_key()
+            )
+        ).collect();
+
+    let mut locations : Vec<(usize, usize)> = Vec::with_capacity(necessary_res + 1);
+    loop {
+        select! {
+            res = responses.select_next_some() => {
+                if let Ok(loc) = res {
+                    locations.push(loc);
+                }
+
+                if locations.len() > necessary_res {
+                    println!("Success!");
+                    break ;
+                }
+            }
+            complete => break,
+        }
+    }
+
+    println!("location {:?}", locations); // TODO only print most recent one
+
+}
+
+async fn do_get_proofs_command(
+    idx : usize,
+    server_urls :  Arc<Vec<Uri>>,
+    client_keys : Arc<ClientKeys>,
+    server_keys : Arc<ServerPublicKey>,
+    necessary_res : usize,
+    epochs : HashSet<usize>,
+) {
+    let mut responses : FuturesUnordered<_> = server_urls.iter().enumerate().map(
+        |(server_id, url)|
+            reports::request_my_proofs(
+                idx,
+                epochs.clone(),
+                url.clone(),
+                client_keys.sign_key(),
+                server_keys.public_key(server_id),
+                client_keys.public_key()
+            )
+        ).collect();
+
+    let mut proofs_res : Vec<Vec<Proof>> = Vec::with_capacity(necessary_res + 1);
+    loop {
+        select! {
+            res = responses.select_next_some() => {
+                if let Ok(loc) = res {
+                    proofs_res.push(loc);
+                }
+
+                if proofs_res.len() > necessary_res {
+                    println!("Success!");
+                    break ;
+                }
+            }
+            complete => break,
+        }
+    }
+
+    println!("{:?}", proofs_res);  // TODO only print most recent one
+}
 
 async fn read_commands(
     timeline : Arc<Timeline>,
@@ -172,38 +255,16 @@ async fn read_commands(
             if let Some(cap) = orep_pat.captures(buffer.trim_end()) {
                 let epoch  = cap[2].parse::<usize>();
                 if epoch.is_err() { print_command_msg(); continue; }
-                let epoch = epoch.unwrap();
-                let mut responses : FuturesUnordered<_> = server_urls.iter().enumerate().map(
-                    |(server_id, url)|
-                        reports::obtain_location_report(
-                            timeline.clone(),
-                            idx,
-                            epoch,
-                            url.clone(),
-                            client_keys.sign_key(),
-                            server_keys.public_key(server_id),
-                            client_keys.public_key()
-                        )
-                    ).collect();
 
-                let mut locations : Vec<(usize, usize)> = Vec::with_capacity(necessary_res + 1);
-                loop {
-                    select! {
-                        res = responses.select_next_some() => {
-                            if let Ok(loc) = res {
-                                locations.push(loc);
-                            }
-
-                            if locations.len() > necessary_res {
-                                println!("Success!");
-                                break ;
-                            }
-                        }
-                        complete => break,
-                    }
-                }
-
-                println!("location {:?}", locations); // TODO only print most recent one
+                do_get_report_command(
+                    timeline.clone(),
+                    idx,
+                    server_urls.clone(),
+                    client_keys.clone(),
+                    server_keys.clone(),
+                    necessary_res,
+                    epoch.unwrap(),
+                ).await
 
             } if rproofs_pat.is_match(buffer.trim_end()) {
                 let mut epochs = HashSet::new();
@@ -213,36 +274,13 @@ async fn read_commands(
                     }
                 }
 
-                let mut responses : FuturesUnordered<_> = server_urls.iter().enumerate().map(
-                    |(server_id, url)|
-                        reports::request_my_proofs(
-                            idx,
-                            epochs.clone(),
-                            url.clone(),
-                            client_keys.sign_key(),
-                            server_keys.public_key(server_id),
-                            client_keys.public_key()
-                        )
-                    ).collect();
-
-                let mut proofs_res : Vec<Vec<Proof>> = Vec::with_capacity(necessary_res + 1);
-                loop {
-                    select! {
-                        res = responses.select_next_some() => {
-                            if let Ok(loc) = res {
-                                proofs_res.push(loc);
-                            }
-
-                            if proofs_res.len() > necessary_res {
-                                println!("Success!");
-                                break ;
-                            }
-                        }
-                        complete => break,
-                    }
-                }
-
-                println!("{:?}", proofs_res);  // TODO only print most recent one
+                do_get_proofs_command(idx,
+                    server_urls.clone(),
+                    client_keys.clone(),
+                    server_keys.clone(),
+                    necessary_res,
+                    epochs,
+                ).await
 
             } else {
                 print_command_msg();
