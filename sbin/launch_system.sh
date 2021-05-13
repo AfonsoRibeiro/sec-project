@@ -28,7 +28,7 @@ echo
 rm single_server/storage/*
 for ((idx=0;idx<n_servers;idx++))
 do
-    gnome-terminal -- ./target/$dir/single_server --id $idx --size $grid_size --keys $keys_dir --fline $f_line
+    gnome-terminal -- ./target/$dir/single_server --id $idx --size $grid_size --keys $keys_dir --fline $f_line --n_servers $n_servers
 done
 
 echo "Starting Clients"

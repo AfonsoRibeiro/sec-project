@@ -18,7 +18,7 @@ use security::key_management::{HAClientKeys, ServerPublicKey, retrieve_ha_client
 #[structopt(name = "HA_Client", about = "Checking on server satus")]
 struct Opt {
 
-    #[structopt(name = "n_servers", long, default_value = "0")]
+    #[structopt(name = "n_servers", long, default_value = "1")]
     n_servers : usize,
 
     #[structopt(name = "size", long, default_value = "5")]

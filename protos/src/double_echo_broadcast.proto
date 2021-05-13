@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package double_echo_broadcast;
+
+service DoubleEchoBroadcast {
+    rpc EchoReport (EchoReportRequest) returns (EchoReportResponse) {}
+    rpc ReadyReport (ReadyReportRequest) returns (ReadyReportResponse) {}
+}
+
+message EchoReportRequest {
+   bytes report = 1;
+}
+
+message EchoReportResponse {
+    bytes nonce = 1;
+    bytes ok = 2;
+}
+
+message ReadyReportRequest {
+   bytes report = 1;
+}
+
+message ReadyReportResponse {
+    bytes nonce = 1;
+    bytes ok = 2;
+}

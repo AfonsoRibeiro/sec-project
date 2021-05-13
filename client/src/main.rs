@@ -37,7 +37,7 @@ struct Opt {
     #[structopt(name = "keys", long, default_value = "security/keys")]
     keys_dir : String,
 
-    #[structopt(name = "n_servers", long, default_value = "0")]
+    #[structopt(name = "n_servers", long, default_value = "1")]
     n_servers : usize
 }
 

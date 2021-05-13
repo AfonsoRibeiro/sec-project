@@ -3,6 +3,7 @@ mod storage;
 
 use color_eyre::eyre::Result;
 use structopt::StructOpt;
+use tonic::transport::Uri;
 
 use std::{fs, sync::Arc};
 
@@ -26,6 +27,9 @@ struct Opt {
 
     #[structopt(name = "fline", long, default_value = "3")]
     f_line : usize,
+
+    #[structopt(name = "n_servers", long, default_value = "1")]
+    n_servers : usize,
 }
 
 #[tokio::main]
@@ -50,7 +54,26 @@ async fn main() -> Result<()> {
 
     let server_keys = Arc::new(retrieve_server_keys(&opt.keys_dir, opt.server_id)?);
 
-    server::start_server(format!("[::1]:500{:02}", opt.server_id), storage, server_keys, opt.f_line).await?;
+    let f_servers = (opt.n_servers - 1) / 3;
+    let necessary_res= f_servers + opt.n_servers / 2 - 1;
+
+    server::start_server(format!("[::1]:500{:02}", opt.server_id), 
+        storage, 
+        server_keys, 
+        opt.f_line,
+        get_servers_url(opt.n_servers, opt.server_id),
+        necessary_res
+    ).await?;
 
     Ok(())
+}
+
+fn get_servers_url(n_servers : usize , id : usize) -> Arc<Vec<Uri>> {
+    let mut server_urls = vec![];
+    for i in 0..n_servers{
+        if i != id {
+            server_urls.push(format!("http://[::1]:500{:02}", i).parse().unwrap());    
+        }
+    }
+    Arc::new(server_urls)
 }

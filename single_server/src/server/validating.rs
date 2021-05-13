@@ -1,11 +1,11 @@
 
 use color_eyre::eyre::Result;
 
-use std::sync::Arc;
+use std::{sync::Arc, usize};
 
 use crate::storage::{Timeline, save_storage};
 
-use tonic::{Request, Response, Status};
+use tonic::{Request, Response, Status, transport::Uri};
 
 use protos::location_storage::{RequestMyProofsRequest, RequestMyProofsResponse, location_storage_server::LocationStorage};
 use protos::location_storage::{SubmitLocationReportRequest, SubmitLocationReportResponse,
@@ -22,14 +22,18 @@ pub struct MyLocationStorage {
     storage : Arc<Timeline>,
     server_keys : Arc<ServerKeys>,
     f_line : usize,
+    server_urls :Arc<Vec<Uri>>,
+    necessary_res : usize,
 }
 
 impl MyLocationStorage {
-    pub fn new(storage : Arc<Timeline>, server_keys : Arc<ServerKeys>, f_line : usize) -> MyLocationStorage {
+    pub fn new(storage : Arc<Timeline>, server_keys : Arc<ServerKeys>, f_line : usize, server_urls : Arc<Vec<Uri>>, necessary_res : usize, ) -> MyLocationStorage {
         MyLocationStorage {
             storage,
             server_keys,
-            f_line
+            f_line,
+            server_urls,
+            necessary_res
         }
     }
 
