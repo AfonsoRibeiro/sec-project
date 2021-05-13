@@ -24,16 +24,26 @@ pub struct MyLocationStorage {
     f_line : usize,
     server_urls :Arc<Vec<Uri>>,
     necessary_res : usize,
+    f_servers : usize,
 }
 
 impl MyLocationStorage {
-    pub fn new(storage : Arc<Timeline>, server_keys : Arc<ServerKeys>, f_line : usize, server_urls : Arc<Vec<Uri>>, necessary_res : usize, ) -> MyLocationStorage {
+    pub fn new(
+        storage : Arc<Timeline>, 
+        server_keys : Arc<ServerKeys>, 
+        f_line : usize, 
+        server_urls : Arc<Vec<Uri>>,
+        necessary_res : usize, 
+        f_servers : usize
+    ) -> MyLocationStorage {
+        
         MyLocationStorage {
             storage,
             server_keys,
             f_line,
             server_urls,
-            necessary_res
+            necessary_res,
+            f_servers
         }
     }
 

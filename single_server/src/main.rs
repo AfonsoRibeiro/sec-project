@@ -55,14 +55,15 @@ async fn main() -> Result<()> {
     let server_keys = Arc::new(retrieve_server_keys(&opt.keys_dir, opt.server_id)?);
 
     let f_servers = (opt.n_servers - 1) / 3;
-    let necessary_res= f_servers + opt.n_servers / 2 - 1;
+    let necessary_res= f_servers + opt.n_servers / 2;
 
     server::start_server(format!("[::1]:500{:02}", opt.server_id), 
         storage, 
         server_keys, 
         opt.f_line,
         get_servers_url(opt.n_servers, opt.server_id),
-        necessary_res
+        necessary_res,
+        f_servers
     ).await?;
 
     Ok(())

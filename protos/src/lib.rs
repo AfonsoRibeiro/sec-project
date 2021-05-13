@@ -8,6 +8,6 @@ pub mod location_proof {
 pub mod location_master {
     tonic::include_proto!("location_master");
 }
-pub mod echo_broadcast {
+pub mod double_echo_broadcast {
     tonic::include_proto!("double_echo_broadcast");
 }
