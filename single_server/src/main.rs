@@ -7,7 +7,7 @@ use tonic::transport::Uri;
 
 use std::{fs, sync::Arc};
 
-use security::key_management::retrieve_server_keys;
+use security::key_management::{retrieve_server_keys, retrieve_servers_public_keys};
 
 #[derive(StructOpt)]
 #[structopt(name = "Single Server", about = "(Highly) Dependable Location Tracker")]
@@ -53,6 +53,7 @@ async fn main() -> Result<()> {
     };
 
     let server_keys = Arc::new(retrieve_server_keys(&opt.keys_dir, opt.server_id)?);
+    let server_pkeys = Arc::new(retrieve_servers_public_keys(&opt.keys_dir)?);
 
     let f_servers = (opt.n_servers - 1) / 3;
     let necessary_res= f_servers + opt.n_servers / 2;
@@ -63,7 +64,8 @@ async fn main() -> Result<()> {
         opt.f_line,
         get_servers_url(opt.n_servers, opt.server_id),
         necessary_res,
-        f_servers
+        f_servers,
+        server_pkeys,
     ).await?;
 
     Ok(())

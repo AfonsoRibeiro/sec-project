@@ -18,13 +18,13 @@ use security::status::{decode_loc_report, encode_loc_response, decode_my_proofs_
 
 use sodiumoxide::crypto::secretbox;
 
+use super::double_echo_report::DoubleEcho;
+
 pub struct MyLocationStorage {
     storage : Arc<Timeline>,
     server_keys : Arc<ServerKeys>,
     f_line : usize,
-    server_urls :Arc<Vec<Uri>>,
-    necessary_res : usize,
-    f_servers : usize,
+    echo : Arc<DoubleEcho>,
 }
 
 impl MyLocationStorage {
@@ -32,18 +32,14 @@ impl MyLocationStorage {
         storage : Arc<Timeline>, 
         server_keys : Arc<ServerKeys>, 
         f_line : usize, 
-        server_urls : Arc<Vec<Uri>>,
-        necessary_res : usize, 
-        f_servers : usize
+        echo : Arc<DoubleEcho>,
     ) -> MyLocationStorage {
         
         MyLocationStorage {
             storage,
             server_keys,
             f_line,
-            server_urls,
-            necessary_res,
-            f_servers
+            echo
         }
     }
 

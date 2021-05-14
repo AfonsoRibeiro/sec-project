@@ -10,20 +10,24 @@ use protos::{double_echo_broadcast::double_echo_broadcast_server::DoubleEchoBroa
 use protos::location_master::location_master_server::LocationMasterServer;
 
 use crate::storage::Timeline;
-use security::key_management::ServerKeys;
+use security::key_management::{ServerKeys, ServerPublicKey};
 
-pub async fn start_server(addr : String, storage : Arc<Timeline>, 
+pub async fn start_server(
+    addr : String,
+    storage : Arc<Timeline>, 
     server_keys : Arc<ServerKeys>,
     f_line : usize, 
     server_urls :  Arc<Vec<Uri>>, 
     necessary_res : usize,
-    f_servers : usize
+    f_servers : usize,
+    server_pkeys : Arc<ServerPublicKey>,
 ) -> Result<()> {
 
     let addr = addr.parse()?;
-    let validater = validating::MyLocationStorage::new(storage.clone(), server_keys.clone(), f_line, server_urls.clone(), necessary_res, f_servers);
+    let double_echo = Arc::new(double_echo_report::DoubleEcho::new(server_urls, necessary_res, f_servers, server_keys.clone(), server_pkeys));
+    let validater = validating::MyLocationStorage::new(storage.clone(), server_keys.clone(), f_line, double_echo.clone());
     let manager = management::MyLocationMaster::new(storage.clone(), server_keys);
-    let echo = double_echo_report::MyDoubleEchoReport::new(server_urls, necessary_res, f_servers);
+    let echo = double_echo_report::MyDoubleEchoWrite::new(double_echo);
     println!("LocationStorageServer listening on {}", addr);
 
     Server::builder()

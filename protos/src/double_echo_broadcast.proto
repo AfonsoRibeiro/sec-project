@@ -3,24 +3,15 @@ syntax = "proto3";
 package double_echo_broadcast;
 
 service DoubleEchoBroadcast {
-    rpc EchoReport (EchoReportRequest) returns (EchoReportResponse) {}
-    rpc ReadyReport (ReadyReportRequest) returns (ReadyReportResponse) {}
+    rpc EchoWrite (EchoWriteRequest) returns (EchoWriteResponse) {}
 }
 
-message EchoReportRequest {
-   bytes report = 1;
+message EchoWriteRequest {
+   bytes write = 1;
+   bytes info = 2;
 }
 
-message EchoReportResponse {
-    bytes nonce = 1;
-    bytes ok = 2;
-}
-
-message ReadyReportRequest {
-   bytes report = 1;
-}
-
-message ReadyReportResponse {
+message EchoWriteResponse {
     bytes nonce = 1;
     bytes ok = 2;
 }
