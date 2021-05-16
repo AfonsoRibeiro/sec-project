@@ -64,23 +64,30 @@ impl HAClientKeys {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ServerPublicKey {
     public_keys : Vec<box_::PublicKey>,
+    pub_sign_keys : Vec<sign::PublicKey>,
 }
 
 impl ServerPublicKey {
-    fn new(public_keys : Vec<box_::PublicKey>) -> ServerPublicKey {
+    fn new(public_keys : Vec<box_::PublicKey>, pub_sign_keys : Vec<sign::PublicKey>,) -> ServerPublicKey {
         ServerPublicKey {
             public_keys,
+            pub_sign_keys,
         }
     }
     #[allow(dead_code)]
     pub fn public_key(&self, server_id : usize) -> &box_::PublicKey { &self.public_keys[server_id] }
     #[allow(dead_code)]
     pub fn public_keys(&self) -> &Vec<box_::PublicKey> { &self.public_keys }
+    #[allow(dead_code)]
+    pub fn public_sign_key(&self, server_id : usize) -> &sign::PublicKey { &self.pub_sign_keys[server_id] }
+    #[allow(dead_code)]
+    pub fn public_sign_keys(&self) -> &Vec<sign::PublicKey> { &self.pub_sign_keys }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ServerKeys {
     private_key : box_::SecretKey,
+    sign_key : sign::SecretKey,
     public_key : box_::PublicKey,
     client_keys : HashMap<usize, sign::PublicKey>,
     ha_public_key : sign::PublicKey,
@@ -90,11 +97,13 @@ impl ServerKeys{
     fn new(
         client_keys : HashMap<usize, sign::PublicKey>,
         private_key : box_::SecretKey,
+        sign_key : sign::SecretKey,
         public_key : box_::PublicKey,
         ha_key : sign::PublicKey
     ) -> ServerKeys {
         ServerKeys {
             private_key,
+            sign_key,
             public_key,
             client_keys,
             ha_public_key : ha_key,
@@ -104,17 +113,15 @@ impl ServerKeys{
     #[allow(dead_code)]
     pub fn private_key(&self) -> &box_::SecretKey { &self.private_key }
     #[allow(dead_code)]
+    pub fn sign_key(&self) -> &sign::SecretKey { &self.sign_key }
+    #[allow(dead_code)]
     pub fn public_key(&self) -> &box_::PublicKey { &self.public_key }
     #[allow(dead_code)]
     pub fn ha_public_key(&self) -> &sign::PublicKey { &self.ha_public_key }
 
     #[allow(dead_code)]
     pub fn client_sign_key(&self, idx : usize) -> Option<&sign::PublicKey> {
-        if let Some(sign) = self.client_keys.get(&idx) {
-            Some(sign)
-        } else {
-            None
-        }
+        self.client_keys.get(&idx)
     }
 }
 
@@ -124,6 +131,7 @@ pub fn save_keys(n_clients : usize, n_servers : usize, keys_dir : String) -> Res
     let mut clients_public_keys = HashMap::new();
     let mut client_secret_pairs =  HashMap::new();
     let mut servers_public_keys = vec![];
+    let mut servers_pub_sign_keys = vec![];
 
     for index in 0..n_clients { //each index correspond to the idx of client
         let (signpk, signsk) = sign::gen_keypair();
@@ -141,9 +149,11 @@ pub fn save_keys(n_clients : usize, n_servers : usize, keys_dir : String) -> Res
 
     for server_idx in 0..n_servers {
 
-        let (serverpk, serversk)= box_::gen_keypair();
+        let (serverpk, serversk) = box_::gen_keypair();
+        let (server_pub_sign, server_sign) = sign::gen_keypair();
 
         servers_public_keys.push(serverpk);
+        servers_pub_sign_keys.push(server_pub_sign);
 
         save_server_keys(
             &keys_dir,
@@ -151,6 +161,7 @@ pub fn save_keys(n_clients : usize, n_servers : usize, keys_dir : String) -> Res
             ServerKeys::new(
                 clients_public_keys.clone(),
                 serversk,
+                server_sign,
                 servers_public_keys[server_idx],
                 ha_pk)
             )?;
@@ -158,7 +169,7 @@ pub fn save_keys(n_clients : usize, n_servers : usize, keys_dir : String) -> Res
 
 
     save_ha_client_keys(&keys_dir, HAClientKeys::new(ha_sk, clients_public_keys))?;
-    save_servers_public_keys(&keys_dir, ServerPublicKey::new(servers_public_keys))?;
+    save_servers_public_keys(&keys_dir, ServerPublicKey::new(servers_public_keys, servers_pub_sign_keys))?;
 
     Ok(())
 

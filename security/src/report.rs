@@ -87,8 +87,8 @@ pub fn decode_info(
     Ok(info)
 }
 
-pub fn verify_report(signpk : &sign::PublicKey, signed_report : Vec<u8>) -> Result<Report> {
-    let report = sign::verify(&signed_report, signpk).map_err(|_| eyre!("verify_report: Unable to verify report"))?;
+pub fn verify_report(signpk : &sign::PublicKey, signed_report : &Vec<u8>) -> Result<Report> {
+    let report = sign::verify(signed_report, signpk).map_err(|_| eyre!("verify_report: Unable to verify report"))?;
 
     Ok(serde_json::from_slice(&report)?)
 }

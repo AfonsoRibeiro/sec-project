@@ -29,12 +29,12 @@ pub struct MyLocationStorage {
 
 impl MyLocationStorage {
     pub fn new(
-        storage : Arc<Timeline>, 
-        server_keys : Arc<ServerKeys>, 
-        f_line : usize, 
+        storage : Arc<Timeline>,
+        server_keys : Arc<ServerKeys>,
+        f_line : usize,
         echo : Arc<DoubleEcho>,
     ) -> MyLocationStorage {
-        
+
         MyLocationStorage {
             storage,
             server_keys,
@@ -47,6 +47,10 @@ impl MyLocationStorage {
         if req_idx != report.idx() { return false; }
 
         let (epoch, (pos_x, pos_y)) = (report.epoch(), report.loc());
+
+        if !self.storage.valid_pos(pos_x, pos_y) {
+            return false;
+        }
 
         let ((lower_x, lower_y), (upper_x, upper_y)) = self.storage.valid_neighbour(pos_x, pos_y);
         let mut counter = 0;
@@ -127,6 +131,8 @@ impl LocationStorage for MyLocationStorage {
             Err(_) => return  Err(Status::permission_denied("Unable to decrypt report"))
         };
 
+        // TODO CHECK NOT ALREADY SENTECHO = FALSE
+
         if !self.storage.report_not_submitted_at_epoch(report.epoch(), info.idx()) {
             let nonce = secretbox::gen_nonce();
             return Ok(Response::new(SubmitLocationReportResponse {
@@ -136,25 +142,30 @@ impl LocationStorage for MyLocationStorage {
         }
 
         println!("Checking proofs from {:}", info.idx());
-        if self.check_valid_location_report(info.idx(), &report) {
-            match self.storage.add_user_location_at_epoch(report.epoch(), report.loc(), info.idx(), signed_rep) {
-                Ok(_) => {
-                    self.storage.add_proofs(self.correctly_ass_proofs(&report));
-                    if let Ok(_) = save_storage(self.storage.filename(), &self.storage).await {
-                        let nonce = secretbox::gen_nonce();
-                        Ok( Response::new(SubmitLocationReportResponse {
-                            nonce : nonce.0.to_vec(),
-                            ok : secretbox::seal(b"", &nonce, info.key()),
-                        }))
-                    } else {
-                        Err(Status::aborted("Unable to permanently save information."))
-                    }
-                }
-                Err(_) => Err(Status::permission_denied("Permission denied!!")),
-            }
-         } else {
+        if !self.check_valid_location_report(info.idx(), &report) {
             println!("Failed");
-            Err(Status::permission_denied("Report not valid!!"))
+            return Err(Status::permission_denied("Report not valid!!"))
+        }
+        {
+            let locked_report = self.storage.lock_new_report(report.epoch(), info.idx()).unwrap();
+
+            if self.echo.confirm_write(&signed_rep, report.idx()).await.is_err() { // TODO maybe not just end
+                return Err(Status::aborted("Unable to permanently save information."));
+            }
+            match self.storage.add_user_location_at_epoch(report.epoch(), report.loc(), info.idx(), signed_rep) {
+                Ok(_) => self.storage.add_proofs(self.correctly_ass_proofs(&report)),
+                Err(_) => return Err(Status::permission_denied("Permission denied!!")),
+            }
+        }
+
+        if let Ok(_) = save_storage(self.storage.filename(), &self.storage).await {
+            let nonce = secretbox::gen_nonce();
+            Ok( Response::new(SubmitLocationReportResponse {
+                nonce : nonce.0.to_vec(),
+                ok : secretbox::seal(b"", &nonce, info.key()),
+            }))
+        } else {
+            Err(Status::aborted("Unable to permanently save information."))
         }
     }
 
@@ -250,7 +261,7 @@ impl LocationStorage for MyLocationStorage {
             Err(_) => return  Err(Status::permission_denied("Unable to decrypt report"))
         };
 
-        let (proofs, nonce) = encode_my_proofs_response(info.key(), self.storage.get_proofs(info.idx(), &proofs_req.epochs)); 
+        let (proofs, nonce) = encode_my_proofs_response(info.key(), self.storage.get_proofs(info.idx(), &proofs_req.epochs));
 
         Ok( Response::new( RequestMyProofsResponse {
             nonce : nonce.0.to_vec(),

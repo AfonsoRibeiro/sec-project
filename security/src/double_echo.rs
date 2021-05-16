@@ -14,14 +14,22 @@ pub struct Write{
 }
 
 impl Write {
-    pub fn new(report : Vec<u8>, client_id : usize, echo : bool) -> Write{
+    pub fn new_echo(report : Vec<u8>, client_id : usize) -> Write{
         Write{
             report,
             client_id,
-            echo,
+            echo : true,
         }
     }
-    
+
+    pub fn new_ready(report : Vec<u8>, client_id : usize) -> Write{
+        Write{
+            report,
+            client_id,
+            echo : false,
+        }
+    }
+
     pub fn is_echo(&self) -> bool {
         self.echo
     }

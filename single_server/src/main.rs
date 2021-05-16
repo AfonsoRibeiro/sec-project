@@ -58,11 +58,13 @@ async fn main() -> Result<()> {
     let f_servers = (opt.n_servers - 1) / 3;
     let necessary_res= f_servers + opt.n_servers / 2;
 
-    server::start_server(format!("[::1]:500{:02}", opt.server_id), 
-        storage, 
-        server_keys, 
+    server::start_server(
+        opt.server_id,
+        format!("[::1]:500{:02}", opt.server_id),
+        storage,
+        server_keys,
         opt.f_line,
-        get_servers_url(opt.n_servers, opt.server_id),
+        get_servers_url(opt.n_servers),
         necessary_res,
         f_servers,
         server_pkeys,
@@ -71,12 +73,10 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-fn get_servers_url(n_servers : usize , id : usize) -> Arc<Vec<Uri>> {
+fn get_servers_url(n_servers : usize) -> Arc<Vec<Uri>> {
     let mut server_urls = vec![];
     for i in 0..n_servers{
-        if i != id {
-            server_urls.push(format!("http://[::1]:500{:02}", i).parse().unwrap());    
-        }
+        server_urls.push(format!("http://[::1]:500{:02}", i).parse().unwrap());
     }
     Arc::new(server_urls)
 }

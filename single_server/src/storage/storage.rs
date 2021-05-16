@@ -1,6 +1,6 @@
 use std::{fs::File, io::{BufReader, BufWriter}};
 use std::collections::{HashMap, HashSet};
-use std::sync::RwLock;
+use std::sync::{RwLock, RwLockWriteGuard};
 
 use serde_derive::{Deserialize, Serialize};
 use eyre::{eyre, Context};
@@ -10,14 +10,21 @@ use sodiumoxide::crypto::secretbox::Nonce;
 use atomicwrites::{AtomicFile, AllowOverwrite};
 
 #[derive(Debug, Serialize, Deserialize)]
-struct Report {
+pub struct Report {
     loc : (usize, usize),
     report : Vec<u8>
 }
 
 impl Report {
 
-    fn new(loc: (usize, usize), report: Vec<u8>) -> Report {
+    fn new_empty() -> Report {
+        Report {
+            loc : (0,0),
+            report : b"".to_vec(),
+        }
+    }
+
+    pub fn set(&self, loc: (usize, usize), report: Vec<u8>) -> Report {
         Report {
             loc,
             report
@@ -52,7 +59,7 @@ impl Grid {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Timeline {
-    routes : RwLock<HashMap<usize, RwLock<HashMap<usize, Report>>>>, //epoch -> user id -> location/report
+    routes : RwLock<HashMap<usize, RwLock<HashMap<usize, RwLock<Report>>>>>, //epoch -> user id -> location/report
     proofs : RwLock<HashMap<usize, RwLock<HashMap<usize, Vec<Vec<u8>> >>>>, // user -> epoch -> proofs_given
     timeline : RwLock<Vec<Grid>>,
     size : usize,
@@ -84,32 +91,19 @@ impl Timeline {
         }
     }
 
-    pub fn add_user_location_at_epoch(&self, epoch: usize, (pos_x, pos_y) : (usize, usize), idx: usize, report : Vec<u8>) -> Result<()>{
-        if self.blacklist.read().unwrap().contains(&idx) {
-            return Err(eyre!("Malicious user detected!"));
-        }
-        if !self.valid_pos(pos_x, pos_y){
-            return Err(eyre!("Invalid position"));
-        }
-        {
-            let report = Report::new((pos_x, pos_y), report);
-            let mut routes = self.routes.write().unwrap();
-            if let Some(user_pos) =  routes.get(&epoch) {
-                let mut writable_user_pos = user_pos.write().unwrap();
-                if let Some(user_pos) =  writable_user_pos.get(&idx) {
-                    if user_pos.loc != (pos_x, pos_y) {
-                        self.blacklist.write().unwrap().insert(idx);
-                        return Err(eyre!("Two different positions submitted for the same epoch"));
-                    }
-                } else {
-                    writable_user_pos.insert(idx,report);
-                }
-            } else {
-                let mut users_loc = HashMap::new();
-                users_loc.insert(idx, report);
-                routes.insert(epoch, RwLock::new(users_loc));
-            }
-        }
+    pub fn add_user_location_at_epoch(
+        &self,
+        epoch: usize,
+        (pos_x, pos_y) : (usize, usize),
+        idx: usize,
+        report : Vec<u8>
+    ) -> Result<()>{
+        let routes = self.routes.read().unwrap();
+        let epoch_users = routes.get(&epoch).unwrap();
+        let user_pos = epoch_users.read().unwrap();
+        let user_pos = user_pos.get(&idx).unwrap();
+        user_pos.write().unwrap().set((pos_x, pos_y), report); // Release lock
+
         {
             let mut vec = self.timeline.write().map_err(|_| eyre!("Unable to write"))?;
 
@@ -117,9 +111,36 @@ impl Timeline {
                 vec.push(Grid::new_empty(self.size));
             }
         }
+
         let vec = self.timeline.read().map_err(|_| eyre!("Unable to read"))?;
         vec[epoch].add_user_location(pos_x, pos_y, idx);
         Ok(())
+    }
+
+    pub fn lock_new_report(&self, epoch: usize, idx: usize) -> Result<()> {
+        if self.blacklist.read().unwrap().contains(&idx) {
+            return Err(eyre!("Malicious user detected!"));
+        }
+
+        let empty_report = RwLock::new(Report::new_empty());
+        {
+            let mut routes = self.routes.write().unwrap();
+            if let Some(user_pos) = routes.get(&epoch) {
+                let mut writable_user_pos = user_pos.write().unwrap();
+                if let Some(user_pos) =  writable_user_pos.get(&idx) {
+                    return Err(eyre!("Report already exists!"));
+                } else {
+                    writable_user_pos.insert(idx,empty_report);
+                    Ok(())
+                }
+            } else {
+                let mut users_loc = HashMap::new();
+                users_loc.insert(idx, empty_report);
+                let x = users_loc.get(&idx).unwrap();
+                routes.insert(epoch, RwLock::new(users_loc));
+                Ok(())
+            }
+        }
     }
 
     pub fn add_proofs(&self, proofs : Vec<(usize, usize, Vec<u8>)>) {
@@ -180,7 +201,7 @@ impl Timeline {
             let epoch_map = epoch_map.get(&epoch).unwrap().read().unwrap();
             for idx in vec[epoch].get_users_at_location(pos_x, pos_y) {
                 if let Some(report) = epoch_map.get(&idx) {
-                    idxs_reports.push((idx, report.report.clone()));
+                    idxs_reports.push((idx, report.read().unwrap().report.clone()));
                 } else {
                     println!("WHY ME")
                 }
@@ -195,7 +216,7 @@ impl Timeline {
     pub fn get_user_report_at_epoch(&self, epoch: usize, idx: usize) -> Option<Vec<u8>> {
         if let Some(user_loc ) = self.routes.read().unwrap().get(&epoch) {
             if let Some(position) = user_loc.read().unwrap().get(&idx){
-                return Some(position.report.clone());
+                return Some(position.read().unwrap().report.clone());
             }
         }
         None
@@ -308,6 +329,8 @@ mod tests {
     fn add_user() {
         let storage = Timeline::new(SIZE, FILENAME.to_string());
 
+        let locked_report = storage.lock_new_report(EPOCH, IDX).unwrap();
+
         assert!(storage.add_user_location_at_epoch(EPOCH, (POS_X, POS_Y), IDX, "report".as_bytes().to_vec()).is_ok());
 
         let report = storage.get_user_report_at_epoch(EPOCH, IDX).unwrap();
@@ -325,6 +348,8 @@ mod tests {
     fn add_user_out_of_bound() {
         let storage = Timeline::new(SIZE, FILENAME.to_string());
 
+        let locked_report = storage.lock_new_report(EPOCH, IDX).unwrap();
+
         assert!(storage.add_user_location_at_epoch(EPOCH, (SIZE, POS_Y), IDX, "report".as_bytes().to_vec()).is_err());
     }
 
@@ -332,7 +357,11 @@ mod tests {
     fn double_report_at_same_epoch_diff_pos() {
         let storage = Timeline::new(SIZE, FILENAME.to_string());
 
+        let locked_report = storage.lock_new_report(EPOCH, IDX).unwrap();
+
         assert!(storage.add_user_location_at_epoch(EPOCH, (POS_X, POS_Y), IDX, "report".as_bytes().to_vec()).is_ok());
+
+        let locked_report = storage.lock_new_report(EPOCH, IDX).unwrap();
 
         assert!(storage.add_user_location_at_epoch(EPOCH, (DIFF_POS_X, POS_Y), IDX, "report".as_bytes().to_vec()).is_err());
     }
@@ -341,7 +370,11 @@ mod tests {
     fn double_report_at_same_epoch_same_pos() {
         let storage = Timeline::new(SIZE, FILENAME.to_string());
 
+        let locked_report = storage.lock_new_report(EPOCH, IDX).unwrap();
+
         assert!(storage.add_user_location_at_epoch(EPOCH, (POS_X, POS_Y), IDX, "report".as_bytes().to_vec()).is_ok());
+
+        let locked_report = storage.lock_new_report(EPOCH, IDX).unwrap();
 
         assert!(storage.add_user_location_at_epoch(EPOCH, (POS_X, POS_Y), IDX, "report".as_bytes().to_vec()).is_ok());
     }
