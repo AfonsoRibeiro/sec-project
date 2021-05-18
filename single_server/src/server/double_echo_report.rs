@@ -1,4 +1,4 @@
-use std::{collections::{HashMap, HashSet}, sync::{Arc, RwLock}};
+use std::{collections::{HashMap, HashSet}, sync::{Arc, RwLock}, time::Duration};
 
 use futures::stream::{FuturesUnordered, StreamExt};
 use futures::select;
@@ -8,6 +8,7 @@ use async_recursion::async_recursion;
 use eyre::eyre;
 use color_eyre::eyre::Result;
 use sodiumoxide::crypto::{box_, secretbox, sign};
+use tokio::time::sleep;
 use tonic::{Request, Response, Status, transport::Uri};
 use security::{double_echo::{self, Write, success_echo, decode_echo_info, decode_echo_request}, key_management::{ServerKeys, ServerPublicKey}, proof::verify_proof, report::{Report, verify_report}};
 use protos::double_echo_broadcast::{EchoWriteRequest, EchoWriteResponse, double_echo_broadcast_client::DoubleEchoBroadcastClient, double_echo_broadcast_server::{DoubleEchoBroadcast}};
@@ -71,7 +72,7 @@ impl Logic {
 
     fn start_deliver(&self, client_id : usize, epoch : usize) -> bool {
         let mut delivered = self.delivered.write().unwrap();
-        match delivered.get_mut(&client_id) {
+        let start = match delivered.get_mut(&client_id) {
             Some(epoch_delivered) => epoch_delivered.insert(epoch),
             None => {
                 let mut epoch_delivered = HashSet::new();
@@ -79,7 +80,15 @@ impl Logic {
                 delivered.insert(client_id, epoch_delivered);
                 true
             }
+        };
+
+        if start {
+            let mut client_echos = self.echos.write().unwrap();
+            let mut client_readys = self.readys.write().unwrap();
+            client_echos.insert(client_id, HashMap::new());
+            client_readys.insert(client_id, HashMap::new());
         }
+        start
     }
 
     fn has_been_delivered(&self, client_id : usize, epoch : usize) -> bool {
@@ -174,7 +183,7 @@ impl Logic {
 
 pub struct DoubleEcho {
     server_id : usize,
-    server_urls : Vec<(usize, Uri)>,
+    server_urls : Arc<Vec<(usize, Uri)>>,
     necessary_res : usize,
     f_servers : usize,
     server_keys : Arc<ServerKeys>,
@@ -187,7 +196,7 @@ pub struct DoubleEcho {
 impl DoubleEcho {
     pub fn new(
         server_id : usize,
-        server_urls : Vec<(usize, Uri)>,
+        server_urls : Arc<Vec<(usize, Uri)>>,
         necessary_res : usize,
         f_servers : usize,
         server_keys : Arc<ServerKeys>,
@@ -290,90 +299,55 @@ impl DoubleEcho {
             return Ok(());
         }
 
-        self.echo_fase(message, client_id, report.epoch()).await;
+        if self.logic.start_echo(client_id, report.epoch()) {
+            self.echo_fase(message, client_id, report.epoch());
+        }
 
         // TODO wait for delivery done
 
         Ok(())
     }
 
-    async fn echo_fase(
+    fn echo_fase(
         &self,
         message : &Vec<u8>,
         client_id : usize,
         epoch : usize,
-    ) -> Result<()> {
-
+    ) {
         let echo_write = Write::new_echo(message.clone(), client_id, epoch);
 
-        if self.logic.start_echo(client_id, epoch) {
-            self.logic.add_server_to_echo_msg(client_id, self.server_id, message);
-            self.fase(message, client_id, epoch, &echo_write, HashSet::new()).await
-        } else {
-            Ok(())
-        }
+        self.logic.add_server_to_echo_msg(client_id, self.server_id, message);
+        tokio::spawn(fase(
+            self.server_id,
+            echo_write,
+            HashSet::new(),
+            self.necessary_res,
+            self.server_urls.clone(),
+            self.server_keys.clone(),
+            self.server_pkeys.clone(),
+        ));
 
     }
 
-    async fn ready_fase(
+    fn ready_fase(
         &self,
         message : &Vec<u8>,
         client_id : usize,
         epoch : usize,
-    ) -> Result<()> {
+    ) {
+        println!("Sending Readys");
+        let ready_write = Write::new_ready(message.clone(), client_id, epoch);
 
-        let echo_ready = Write::new_ready(message.clone(), client_id, epoch);
-
-        if self.logic.start_ready(client_id, epoch) {
-            self.logic.add_server_to_ready_msg(client_id, self.server_id, message);
-            self.fase(message, client_id, epoch, &echo_ready, HashSet::new()).await
-        } else {
-            Ok(())
-        }
-    }
-
-    #[async_recursion]
-    async fn fase(
-        &self,
-        message : &Vec<u8>,
-        client_id : usize,
-        epoch : usize,
-        write : &Write,
-        mut ack : HashSet<usize>,
-    ) -> Result<()> {
-        let mut responses : FuturesUnordered<_> =
-            self.server_urls.iter().filter(
-                |(server_id, _)|    !ack.contains(server_id)
-            ).map(
-                |(server_id, url)|
-                    echo(
-                        url,
-                        self.server_id,
-                        write,
-                        self.server_keys.sign_key(),
-                        self.server_pkeys.public_key(*server_id),
-                    )
-            ).collect();
-
-        loop {
-            select! {
-                res = responses.select_next_some() => {
-                    if let Ok(server_id) = res {
-                        ack.insert(server_id);
-                    }
-
-                    if ack.len() > self.necessary_res {
-                        break ;
-                    }
-                }
-                complete => break,
-            }
-        }
-        if ack.len() > self.necessary_res {
-            Ok(())
-        } else {
-            self.fase(message, client_id, epoch, write, ack).await
-        }
+        self.logic.add_server_to_ready_msg(client_id, self.server_id, message);
+        tokio::spawn(fase(
+            self.server_id,
+            ready_write,
+            HashSet::new(),
+            self.necessary_res,
+            self.server_urls.clone(),
+            self.server_keys.clone(),
+            self.server_pkeys.clone(),
+        ));
     }
 
     async fn deliver(
@@ -394,6 +368,65 @@ impl DoubleEcho {
     }
 }
 
+#[async_recursion]
+async fn fase(
+    server_id : usize,
+    write : Write,
+    mut ack : HashSet<usize>,
+    necessary_res : usize,
+    server_urls : Arc<Vec<(usize, Uri)>>,
+    server_keys : Arc<ServerKeys>,
+    server_pkeys : Arc<ServerPublicKey>,
+) -> Result<()> {
+    let mut responses : FuturesUnordered<_> =
+        server_urls.iter().filter(
+            |(id, _)|    !ack.contains(id)
+        ).map(
+            |(id, url)|
+                echo(
+                    url,
+                    server_id,
+                    &write,
+                    server_keys.sign_key(),
+                    *id,
+                    server_pkeys.public_key(*id),
+                )
+        ).collect();
+
+    loop {
+        select! {
+            res = responses.select_next_some() => {
+
+                if let Ok(id) = res {
+                    ack.insert(id);
+                }
+
+                if ack.len() > necessary_res {
+                    break ;
+                }
+            }
+            complete => break,
+        }
+    }
+    //println!("ack {:} | nec {:}", ack.len(), necessary_res);
+    if ack.len() > necessary_res {
+        println!("Sent all");
+        Ok(())
+    } else {
+        println!("more sending");
+        sleep(Duration::from_millis(1000)).await;
+        fase(
+            server_id,
+            write.clone(),
+            ack,
+            necessary_res,
+            server_urls.clone(),
+            server_keys.clone(),
+            server_pkeys.clone(),
+        ).await
+    }
+}
+
 /*
 CLIENT
 */
@@ -403,6 +436,7 @@ pub async fn echo(
     server_id : usize,
     write : &double_echo::Write,
     sign_key : &sign::SecretKey,
+    dest_id : usize,
     server_key : &box_::PublicKey,
 ) -> Result<usize> {
     let (info, write, key) = double_echo::encode_echo_request(sign_key, server_key, write, server_id);
@@ -418,8 +452,9 @@ pub async fn echo(
         Ok(response) => {
             let response = response.get_ref();
             if success_echo(&key, &response.nonce, &response.ok) {
-                Ok(server_id)
+                Ok(dest_id)
             } else {
+                println!("Failed echo");
                 Err(eyre!("echo_write unable to validate server response"))
             }
         }
@@ -471,59 +506,83 @@ impl DoubleEchoBroadcast for MyDoubleEchoWrite {
             return Err(Status::permission_denied(format!("Unable to find server {:} keys", info.server_id)));
         };
 
-        let (write, message) = match decode_echo_request(
+        let write = match decode_echo_request(
             self.echo.server_pkeys.public_sign_key(info.server_id),
             &info.key,
             &request.write,
             &info.nonce,
         ) {
-            Ok(write_rep) => {
-                write_rep
+            Ok(write) => {
+                write
             }
-            Err(_) => return  Err(Status::permission_denied("Unable to decrypt echo"))
+            Err(_) => return Err(Status::permission_denied("Unable to decrypt echo"))
         };
 
-        if write.is_echo() {
+        let message = &write.report;
 
-            if !self.echo.logic.has_echo_message(write.client_id, &message) {
-                match self.echo.get_report_from_signed(&message, write.client_id) {
+        if write.is_echo() {
+            println!("Recieved echo | from server {:} and client {:}", info.server_id, write.client_id);
+
+            if !self.echo.logic.has_echo_message(write.client_id, message) {
+                match self.echo.get_report_from_signed(message, write.client_id) {
                     Ok(report) => {
-                        if !self.echo.check_valid_location_report(write.client_id, &report) {
+                        if !self.echo.check_valid_location_report(write.client_id, &report)
+                            && write.epoch == report.epoch() {
                             return Err(Status::aborted("Not a correct report"));
+                        }
+                        if self.echo.logic.has_been_delivered(write.client_id, write.epoch) {
+                            let nonce = secretbox::gen_nonce();
+                            return Ok( Response::new( EchoWriteResponse{
+                                nonce : nonce.0.to_vec(),
+                                ok : secretbox::seal(b"", &nonce, &info.key),
+                            }));
                         }
                     }
                     Err(err) => return Err(Status::aborted(err.to_string())),
                 }
             }
 
-            if self.echo.logic.add_server_to_echo_msg(write.client_id, info.server_id, &message) > self.echo.necessary_res {
+            if self.echo.logic.add_server_to_echo_msg(write.client_id, info.server_id, message) > self.echo.necessary_res {
                 if self.echo.logic.start_ready(write.client_id, write.epoch) {
-                    self.echo.ready_fase(&message, write.client_id, write.epoch);
+                    println!("Going to ready mode {:}", write.client_id);
+                    self.echo.ready_fase(message, write.client_id, write.epoch);
                 }
             }
 
         } else { // READY
+            println!("Recieved Ready | from server {:} and client {:}", info.server_id, write.client_id);
 
-            if !self.echo.logic.has_ready_message(write.client_id, &message) {
-                match self.echo.get_report_from_signed(&message, write.client_id) {
+            if !self.echo.logic.has_ready_message(write.client_id, message) {
+                match self.echo.get_report_from_signed(message, write.client_id) {
                     Ok(report) => {
-                        if !self.echo.check_valid_location_report(write.client_id, &report) {
+                        if !self.echo.check_valid_location_report(write.client_id, &report)
+                            && write.epoch == report.epoch() {
                             return Err(Status::aborted("Not a correct report"));
+                        }
+                        if self.echo.logic.has_been_delivered(write.client_id, write.epoch) {
+                            let nonce = secretbox::gen_nonce();
+                            return Ok( Response::new( EchoWriteResponse{
+                                nonce : nonce.0.to_vec(),
+                                ok : secretbox::seal(b"", &nonce, &info.key),
+                            }));
                         }
                     }
                     Err(err) => return Err(Status::aborted(err.to_string())),
                 }
             }
 
-            let n = self.echo.logic.add_server_to_ready_msg(write.client_id, info.server_id, &message);
+            let n = self.echo.logic.add_server_to_ready_msg(write.client_id, info.server_id, message);
 
             if n > self.echo.f_servers {
                 if self.echo.logic.start_ready(write.client_id, write.epoch) {
-                    self.echo.ready_fase(&message, write.client_id, write.epoch);
+                    println!("Going by ready to ready mode {:}", write.client_id);
+                    self.echo.ready_fase(message, write.client_id, write.epoch);
                 }
-            } else if n > self.echo.necessary_res {
+            }
+            if n > self.echo.necessary_res {
                 if self.echo.logic.start_deliver(write.client_id, write.epoch) {
-                    self.echo.deliver(&message, write.client_id);
+                    println!("Delivering {:}", write.client_id);
+                    let _x = self.echo.deliver(message, write.client_id).await;
                 }
             }
 

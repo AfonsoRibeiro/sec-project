@@ -7,5 +7,13 @@ TODO:
 
     Keystore /* As soon as possible */
 
-    Dont sent echos and readys to ourselves
+    Client olny need to wait for f+1 OKs
+
+    Notify server write is done
+
+    Reads finish
+
+    Spamm
+
+    Tests
 

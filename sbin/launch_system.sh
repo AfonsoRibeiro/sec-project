@@ -25,7 +25,7 @@ echo
 
 echo "Starting Servers"
 echo
-rm single_server/storage/*
+rm single_server/storage/* 2> /dev/null
 for ((idx=0;idx<n_servers;idx++))
 do
     gnome-terminal -- ./target/$dir/single_server --id $idx --size $grid_size --keys $keys_dir --fline $f_line --n_servers $n_servers

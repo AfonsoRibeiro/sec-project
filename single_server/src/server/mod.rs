@@ -27,7 +27,7 @@ pub async fn start_server(
     let addr = addr.parse()?;
     let double_echo = Arc::new(double_echo_report::DoubleEcho::new(
                 server_id,
-                server_urls,
+                Arc::new(server_urls),
                 necessary_res,
                 f_servers,
                 server_keys.clone(),
@@ -35,7 +35,7 @@ pub async fn start_server(
                 f_line,
                 storage.clone()
             ));
-    let validater = validating::MyLocationStorage::new(storage.clone(), server_keys.clone(), f_line, double_echo.clone());
+    let validater = validating::MyLocationStorage::new(storage.clone(), server_keys.clone(), double_echo.clone());
     let manager = management::MyLocationMaster::new(storage.clone(), server_keys);
     let echo = double_echo_report::MyDoubleEchoWrite::new(double_echo);
     println!("LocationStorageServer listening on {}", addr);

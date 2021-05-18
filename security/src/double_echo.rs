@@ -6,7 +6,7 @@ use sodiumoxide::crypto::sealedbox;
 use color_eyre::eyre::Result;
 use eyre::eyre;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Write{
     pub report : Vec<u8>,
     pub client_id : usize,
@@ -85,14 +85,14 @@ pub fn decode_echo_request(
     sim_key : &secretbox::Key,
     cipher_write : &Vec<u8>,
     nonce : &secretbox::Nonce,
-) -> Result<(Write, Vec<u8>)> {
+) -> Result<Write> {
 
     let signed_echo_request = secretbox::open(cipher_write, nonce, sim_key).map_err(|_| eyre!("decoded_echo_request: Unable to open secretbox"))?;
     let decoded_echo_request = sign::verify(&signed_echo_request, signpk).map_err(|_| eyre!("decoded_echo_request: Unable to verify signature"))?;
 
     let echo_request = serde_json::from_slice(&decoded_echo_request)?;
 
-    Ok((echo_request, decoded_echo_request))
+    Ok(echo_request)
 }
 
 pub fn decode_echo_info(

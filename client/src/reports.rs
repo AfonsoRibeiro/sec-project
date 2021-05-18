@@ -27,8 +27,6 @@ pub async fn submit_location_report(
 
     let mut client = LocationStorageClient::connect(url.clone()).await?;
 
-    println!("connected");
-
     let request = tonic::Request::new(SubmitLocationReportRequest {
         report,
         report_info,
@@ -44,7 +42,7 @@ pub async fn submit_location_report(
                 Err(eyre!("submit_location_report unable to validate server response "))
             }
         }
-        Err(status) => { 
+        Err(status) => {
             println!("SubmitLocationReport failed with code {:?} and message {:?}.",
             status.code(), status.message());
             Err(eyre!("SubmitLocationReport failed with code {:?} and message {:?}.",

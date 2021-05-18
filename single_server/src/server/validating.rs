@@ -1,7 +1,7 @@
 
 use color_eyre::eyre::Result;
 
-use std::{sync::Arc, usize};
+use std::sync::Arc;
 
 use crate::storage::Timeline;
 
@@ -22,7 +22,6 @@ use super::double_echo_report::DoubleEcho;
 pub struct MyLocationStorage {
     storage : Arc<Timeline>,
     server_keys : Arc<ServerKeys>,
-    f_line : usize,
     echo : Arc<DoubleEcho>,
 }
 
@@ -30,14 +29,12 @@ impl MyLocationStorage {
     pub fn new(
         storage : Arc<Timeline>,
         server_keys : Arc<ServerKeys>,
-        f_line : usize,
         echo : Arc<DoubleEcho>,
     ) -> MyLocationStorage {
 
         MyLocationStorage {
             storage,
             server_keys,
-            f_line,
             echo
         }
     }
@@ -78,8 +75,11 @@ impl LocationStorage for MyLocationStorage {
             &info.nonce(),
         ) {
             Ok(report) => {
+                if info.idx() != report.0.idx() {
+                    return Err(Status::aborted("Info idx does not match report idx"));
+                }
                 if !self.storage.add_nonce(info.idx(), info.nonce().clone()) {
-                    return  Err(Status::permission_denied("nonce already exists"));
+                    return Err(Status::permission_denied("nonce already exists"));
                 }
                 report
             }
