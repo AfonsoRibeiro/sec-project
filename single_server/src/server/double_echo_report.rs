@@ -5,7 +5,6 @@ use futures::select;
 
 use async_recursion::async_recursion;
 
-use dashmap::DashMap;
 use eyre::eyre;
 use color_eyre::eyre::Result;
 use sodiumoxide::crypto::{box_, secretbox, sign};
@@ -17,8 +16,8 @@ use crate::storage::{Timeline, save_storage};
 
 struct Logic {
     n_servers : usize,
-    echos  : DashMap<usize, DashMap<usize, Vec< Vec<u8>> > >, // client id -> epoch -> server id -> m
-    readys : DashMap<usize, DashMap<usize, Vec< Vec<u8>> > >, // client id -> epoch -> server id -> m
+    echos  : RwLock<HashMap<usize, HashMap<Vec<u8>, HashSet<usize>>>>, // client id -> m -> server id
+    readys : RwLock<HashMap<usize, HashMap<Vec<u8>, HashSet<usize>>>>, // client id -> m -> server id
     sent_echo  : RwLock<HashMap<usize, HashSet<usize>>>, // client id -> epoch
     sent_ready : RwLock<HashMap<usize, HashSet<usize>>>, // client id -> epoch
     delivered  : RwLock<HashMap<usize, HashSet<usize>>>, // client id -> epoch
@@ -28,8 +27,8 @@ impl Logic {
     fn new(n_servers : usize) -> Logic {
         Logic {
             n_servers,
-            echos  : DashMap::new(),
-            readys : DashMap::new(),
+            echos  : RwLock::new(HashMap::new()),
+            readys : RwLock::new(HashMap::new()),
             sent_echo  : RwLock::new(HashMap::new()),
             sent_ready : RwLock::new(HashMap::new()),
             delivered  : RwLock::new(HashMap::new()),
@@ -80,6 +79,95 @@ impl Logic {
                 delivered.insert(client_id, epoch_delivered);
                 true
             }
+        }
+    }
+
+    fn has_been_delivered(&self, client_id : usize, epoch : usize) -> bool {
+        match self.delivered.read().unwrap().get(&client_id) {
+            Some(epochs_delivered) => epochs_delivered.contains(&epoch),
+            None => false,
+        }
+    }
+
+    fn has_echo_message(&self, client_id : usize, message : &Vec<u8>) -> bool{
+        let client_msgs = self.echos.read().unwrap();
+        match client_msgs.get(&client_id) {
+            Some(msgs) => msgs.contains_key(message),
+            None => false,
+        }
+    }
+
+    fn add_server_to_echo_msg(&self, client_id : usize, server_id : usize, message : &Vec<u8>) -> usize {
+        let mut client_msgs = self.echos.write().unwrap();
+        match client_msgs.get_mut(&client_id) {
+            Some(msgs) => {
+
+                for set in msgs.values() {
+                    if set.contains(&server_id) {
+                        return set.len();
+                    }
+                }
+
+                match msgs.get_mut(message) {
+                    Some(set) => { set.insert(server_id); set.len() }
+                    None => {
+                        let mut y = HashSet::new();
+                        y.insert(server_id);
+                        msgs.insert(message.to_vec(), y);
+                        1
+                    }
+                }
+
+            }
+            None => {
+                let mut x = HashMap::new();
+                let mut y = HashSet::new();
+                y.insert(server_id);
+                x.insert(message.to_vec(), y);
+                client_msgs.insert(client_id, x);
+                1
+            },
+        }
+    }
+
+    fn has_ready_message(&self, client_id : usize, message : &Vec<u8>) -> bool{
+        let client_msgs = self.readys.read().unwrap();
+        match client_msgs.get(&client_id) {
+            Some(msgs) => msgs.contains_key(message),
+            None => false,
+        }
+    }
+
+    fn add_server_to_ready_msg(&self, client_id : usize, server_id : usize, message : &Vec<u8>) -> usize {
+        let mut client_msgs = self.readys.write().unwrap();
+        match client_msgs.get_mut(&client_id) {
+            Some(msgs) => {
+
+                for set in msgs.values() {
+                    if set.contains(&server_id) {
+                        return set.len();
+                    }
+                }
+
+                match msgs.get_mut(message) {
+                    Some(set) => { set.insert(server_id); set.len() }
+                    None => {
+                        let mut y = HashSet::new();
+                        y.insert(server_id);
+                        msgs.insert(message.to_vec(), y);
+                        1
+                    }
+                }
+
+            }
+            None => {
+                let mut x = HashMap::new();
+                let mut y = HashSet::new();
+                y.insert(server_id);
+                x.insert(message.to_vec(), y);
+                client_msgs.insert(client_id, x);
+                1
+            },
         }
     }
 }
@@ -191,17 +279,18 @@ impl DoubleEcho {
         &self,
         message : &Vec<u8>,
         client_id : usize,
-        epoch : usize,
         report : Report,
     ) -> Result<()> {
 
-        // Check message doesnt exist yet (If so alredy checked)
-
-        self.check_valid_location_report(client_id, &report);
-
-        if self.logic.start_echo(client_id, epoch) {
-            self.echo_fase(message, client_id, epoch).await;
+        if !self.check_valid_location_report(client_id, &report) {
+            return Err(eyre!("Not a valid report"));
         }
+
+        if self.logic.has_been_delivered(client_id, report.epoch()) {
+            return Ok(());
+        }
+
+        self.echo_fase(message, client_id, report.epoch()).await;
 
         // TODO wait for delivery done
 
@@ -215,9 +304,10 @@ impl DoubleEcho {
         epoch : usize,
     ) -> Result<()> {
 
-        let echo_write = Write::new_echo(message.clone(), client_id);
+        let echo_write = Write::new_echo(message.clone(), client_id, epoch);
 
         if self.logic.start_echo(client_id, epoch) {
+            self.logic.add_server_to_echo_msg(client_id, self.server_id, message);
             self.fase(message, client_id, epoch, &echo_write, HashSet::new()).await
         } else {
             Ok(())
@@ -232,9 +322,10 @@ impl DoubleEcho {
         epoch : usize,
     ) -> Result<()> {
 
-        let echo_ready = Write::new_ready(message.clone(), client_id);
+        let echo_ready = Write::new_ready(message.clone(), client_id, epoch);
 
         if self.logic.start_ready(client_id, epoch) {
+            self.logic.add_server_to_ready_msg(client_id, self.server_id, message);
             self.fase(message, client_id, epoch, &echo_ready, HashSet::new()).await
         } else {
             Ok(())
@@ -392,30 +483,48 @@ impl DoubleEchoBroadcast for MyDoubleEchoWrite {
             Err(_) => return  Err(Status::permission_denied("Unable to decrypt echo"))
         };
 
-        let epoch = 0_usize; // FIX
-
         if write.is_echo() {
 
-            // TODO add msg if not there
+            if !self.echo.logic.has_echo_message(write.client_id, &message) {
+                match self.echo.get_report_from_signed(&message, write.client_id) {
+                    Ok(report) => {
+                        if !self.echo.check_valid_location_report(write.client_id, &report) {
+                            return Err(Status::aborted("Not a correct report"));
+                        }
+                    }
+                    Err(err) => return Err(Status::aborted(err.to_string())),
+                }
+            }
 
-            // if > necessary_res
-            if self.echo.logic.start_ready(write.client_id, epoch) {
-                self.echo.ready_fase(&message, write.client_id, epoch);
+            if self.echo.logic.add_server_to_echo_msg(write.client_id, info.server_id, &message) > self.echo.necessary_res {
+                if self.echo.logic.start_ready(write.client_id, write.epoch) {
+                    self.echo.ready_fase(&message, write.client_id, write.epoch);
+                }
             }
 
         } else { // READY
 
-            // TODO add msg if not there
-
-            // if > f_servers
-            if self.echo.logic.start_ready(write.client_id, epoch) {
-                self.echo.ready_fase(&message, write.client_id, epoch);
+            if !self.echo.logic.has_ready_message(write.client_id, &message) {
+                match self.echo.get_report_from_signed(&message, write.client_id) {
+                    Ok(report) => {
+                        if !self.echo.check_valid_location_report(write.client_id, &report) {
+                            return Err(Status::aborted("Not a correct report"));
+                        }
+                    }
+                    Err(err) => return Err(Status::aborted(err.to_string())),
+                }
             }
 
-            // if > necessary_res
-                // Deliver
-            if self.echo.logic.start_deliver(write.client_id, epoch) {
-                self.echo.deliver(&message, write.client_id);
+            let n = self.echo.logic.add_server_to_ready_msg(write.client_id, info.server_id, &message);
+
+            if n > self.echo.f_servers {
+                if self.echo.logic.start_ready(write.client_id, write.epoch) {
+                    self.echo.ready_fase(&message, write.client_id, write.epoch);
+                }
+            } else if n > self.echo.necessary_res {
+                if self.echo.logic.start_deliver(write.client_id, write.epoch) {
+                    self.echo.deliver(&message, write.client_id);
+                }
             }
 
         }

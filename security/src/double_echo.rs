@@ -10,22 +10,25 @@ use eyre::eyre;
 pub struct Write{
     pub report : Vec<u8>,
     pub client_id : usize,
+    pub epoch : usize,
     echo : bool,
 }
 
 impl Write {
-    pub fn new_echo(report : Vec<u8>, client_id : usize) -> Write{
+    pub fn new_echo(report : Vec<u8>, client_id : usize, epoch : usize) -> Write{
         Write{
             report,
             client_id,
+            epoch,
             echo : true,
         }
     }
 
-    pub fn new_ready(report : Vec<u8>, client_id : usize) -> Write{
+    pub fn new_ready(report : Vec<u8>, client_id : usize, epoch : usize) -> Write{
         Write{
             report,
             client_id,
+            epoch,
             echo : false,
         }
     }
@@ -84,7 +87,8 @@ pub fn decode_echo_request(
     nonce : &secretbox::Nonce,
 ) -> Result<(Write, Vec<u8>)> {
 
-    let decoded_echo_request = secretbox::open(cipher_write, nonce, sim_key).map_err(|_| eyre!("decoded_echo_request: Unable to open secretbox"))?;
+    let signed_echo_request = secretbox::open(cipher_write, nonce, sim_key).map_err(|_| eyre!("decoded_echo_request: Unable to open secretbox"))?;
+    let decoded_echo_request = sign::verify(&signed_echo_request, signpk).map_err(|_| eyre!("decoded_echo_request: Unable to verify signature"))?;
 
     let echo_request = serde_json::from_slice(&decoded_echo_request)?;
 

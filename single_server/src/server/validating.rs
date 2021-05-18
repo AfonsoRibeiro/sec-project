@@ -96,7 +96,7 @@ impl LocationStorage for MyLocationStorage {
             }));
         }
 
-        match self.echo.confirm_write(&signed_rep, report.idx(), report.epoch(), report).await {
+        match self.echo.confirm_write(&signed_rep, report.idx(), report).await {
             Ok(_) => {
                 let nonce = secretbox::gen_nonce();
                 Ok( Response::new(SubmitLocationReportResponse {
