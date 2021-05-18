@@ -37,7 +37,7 @@ pub async fn obtain_location_report(
         Ok(response) => {
             let response = response.get_ref();
             if let Ok(res) = status::decode_response_location(&key, &response.nonce, &response.location) {
-                if let Ok(report) = report::verify_report(client_public_key, res.report) {
+                if let Ok(report) = report::verify_report(client_public_key, &res.report) {
                     report
                 } else {
                     return  Err(eyre!("obtain_location_report unable to verify report"));
@@ -87,7 +87,7 @@ pub async fn obtain_users_at_location(
                     if !clients_public_keys.contains_key(idx) {
                         return Err(eyre!("obtain_location_report unable to find user"));
                     }
-                    if let Ok(report) = report::verify_report(clients_public_keys.get(idx).unwrap(), report.to_vec()) {
+                    if let Ok(report) = report::verify_report(clients_public_keys.get(idx).unwrap(), report) {
                         if report.epoch() == epoch && report.loc() == (pos_x, pos_y) {
                             idxs.push(*idx);
                         } else {

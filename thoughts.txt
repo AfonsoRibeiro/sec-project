@@ -1,3 +1,5 @@
+Same client cant read and write at same time !!!!
+
 TODO:
     Investigate each algorithm /* ONLY FOR DEBATE */
 
@@ -5,6 +7,5 @@ TODO:
 
     Keystore /* As soon as possible */
 
-    Timestamp nos writes /* STEP 2 || 4 */
-
+    Dont sent echos and readys to ourselves
 

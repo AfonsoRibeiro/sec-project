@@ -64,7 +64,7 @@ async fn main() -> Result<()> {
         storage,
         server_keys,
         opt.f_line,
-        get_servers_url(opt.n_servers),
+        get_servers_url(opt.n_servers, opt.server_id),
         necessary_res,
         f_servers,
         server_pkeys,
@@ -73,10 +73,11 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-fn get_servers_url(n_servers : usize) -> Arc<Vec<Uri>> {
+fn get_servers_url(n_servers : usize, server_id : usize) -> Vec<(usize, Uri)> {
     let mut server_urls = vec![];
     for i in 0..n_servers{
-        server_urls.push(format!("http://[::1]:500{:02}", i).parse().unwrap());
+        if i == server_id {continue;}
+        server_urls.push((i, format!("http://[::1]:500{:02}", i).parse().unwrap()));
     }
-    Arc::new(server_urls)
+    server_urls
 }

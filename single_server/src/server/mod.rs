@@ -15,10 +15,10 @@ use security::key_management::{ServerKeys, ServerPublicKey};
 pub async fn start_server(
     server_id : usize,
     addr : String,
-    storage : Arc<Timeline>, 
+    storage : Arc<Timeline>,
     server_keys : Arc<ServerKeys>,
-    f_line : usize, 
-    server_urls :  Arc<Vec<Uri>>, 
+    f_line : usize,
+    server_urls :  Vec<(usize, Uri)>,
     necessary_res : usize,
     f_servers : usize,
     server_pkeys : Arc<ServerPublicKey>,

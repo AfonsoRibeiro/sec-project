@@ -3,16 +3,15 @@ use color_eyre::eyre::Result;
 
 use std::{sync::Arc, usize};
 
-use crate::storage::{Timeline, save_storage};
+use crate::storage::Timeline;
 
-use tonic::{Request, Response, Status, transport::Uri};
+use tonic::{Request, Response, Status};
 
 use protos::location_storage::{RequestMyProofsRequest, RequestMyProofsResponse, location_storage_server::LocationStorage};
 use protos::location_storage::{SubmitLocationReportRequest, SubmitLocationReportResponse,
     ObtainLocationReportRequest, ObtainLocationReportResponse};
 
-use security::{key_management::ServerKeys, report::Report};
-use security::proof::verify_proof;
+use security::key_management::ServerKeys;
 use security::report::{decode_info, decode_report};
 use security::status::{decode_loc_report, encode_loc_response, decode_my_proofs_request, encode_my_proofs_response};
 
@@ -41,50 +40,6 @@ impl MyLocationStorage {
             f_line,
             echo
         }
-    }
-
-    fn check_valid_location_report(&self, req_idx : usize, report : &Report) -> bool { //signed report
-        if req_idx != report.idx() { return false; }
-
-        let (epoch, (pos_x, pos_y)) = (report.epoch(), report.loc());
-
-        if !self.storage.valid_pos(pos_x, pos_y) {
-            return false;
-        }
-
-        let ((lower_x, lower_y), (upper_x, upper_y)) = self.storage.valid_neighbour(pos_x, pos_y);
-        let mut counter = 0;
-
-        for (idx, proof) in report.proofs() {
-            if let Some(sign_key) = self.server_keys.client_sign_key(*idx) {
-                if let Ok(proof) = verify_proof(&sign_key, &proof) {
-                    let (x, y)  = proof.loc_ass();
-                    if lower_x <= x && x <= upper_x
-                        && lower_y <= y && y <= upper_y
-                        && epoch == proof.epoch()
-                        && req_idx == proof.idx_req()
-                        && *idx == proof.idx_ass() {
-                        counter += 1;
-                    }
-                }
-            }
-            if counter > self.f_line {
-                break;
-            }
-        }
-        counter > self.f_line
-    }
-
-    fn correctly_ass_proofs(&self, report : &Report) -> Vec<(usize, usize, Vec<u8>)> { //signed report
-        let mut proofs = vec![];
-        for (idx, ass_proof) in report.proofs() {
-            if let Some(sign_key) = self.server_keys.client_sign_key(*idx) {
-                if let Ok(p) = verify_proof(&sign_key, &ass_proof) {
-                    proofs.push((*idx, p.epoch(), ass_proof.clone()))
-                }
-            }
-        }
-        proofs
     }
 }
 
@@ -141,31 +96,15 @@ impl LocationStorage for MyLocationStorage {
             }));
         }
 
-        println!("Checking proofs from {:}", info.idx());
-        if !self.check_valid_location_report(info.idx(), &report) {
-            println!("Failed");
-            return Err(Status::permission_denied("Report not valid!!"))
-        }
-        {
-            let locked_report = self.storage.lock_new_report(report.epoch(), info.idx()).unwrap();
-
-            if self.echo.confirm_write(&signed_rep, report.idx()).await.is_err() { // TODO maybe not just end
-                return Err(Status::aborted("Unable to permanently save information."));
+        match self.echo.confirm_write(&signed_rep, report.idx(), report.epoch(), report).await {
+            Ok(_) => {
+                let nonce = secretbox::gen_nonce();
+                Ok( Response::new(SubmitLocationReportResponse {
+                    nonce : nonce.0.to_vec(),
+                    ok : secretbox::seal(b"", &nonce, info.key()),
+                }))
             }
-            match self.storage.add_user_location_at_epoch(report.epoch(), report.loc(), info.idx(), signed_rep) {
-                Ok(_) => self.storage.add_proofs(self.correctly_ass_proofs(&report)),
-                Err(_) => return Err(Status::permission_denied("Permission denied!!")),
-            }
-        }
-
-        if let Ok(_) = save_storage(self.storage.filename(), &self.storage).await {
-            let nonce = secretbox::gen_nonce();
-            Ok( Response::new(SubmitLocationReportResponse {
-                nonce : nonce.0.to_vec(),
-                ok : secretbox::seal(b"", &nonce, info.key()),
-            }))
-        } else {
-            Err(Status::aborted("Unable to permanently save information."))
+            Err(err) => Err(Status::aborted(err.to_string())),
         }
     }
 
