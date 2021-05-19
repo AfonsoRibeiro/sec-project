@@ -5,7 +5,7 @@ use std::{collections::HashSet, sync::Arc};
 use tonic::transport::Uri;
 
 use grid::grid::Timeline;
-
+use std::iter::FromIterator;
 use protos::{location_storage::{ObtainLocationReportRequest, SubmitLocationReportRequest, RequestMyProofsRequest}};
 use protos::location_storage::location_storage_client::LocationStorageClient;
 
@@ -89,11 +89,10 @@ pub async fn obtain_location_report(
                             status.code(), status.message())),
     };
 
-    let (x, y) = report.loc();
-    if timeline.valid_pos(x, y) {
-        Ok((x, y))
+    if epoch == report.epoch(){
+        Ok(report.loc())
     } else {
-        Err(eyre!("Response : Not a valid position (x : {:}, y : {:})", x, y))
+        Err(eyre!("Not the requested epoch: {:}", report.epoch()))
     }
 }
 
@@ -104,28 +103,35 @@ pub async fn request_my_proofs(
     sign_key : &sign::SecretKey,
     server_key : &box_::PublicKey,
     public_key : &sign::PublicKey,
-) -> Result<Vec<Proof>> {
+) -> Result<HashSet<Proof>> {
 
-    let proofs_req = MyProofsRequest::new(epochs);
-    let (user_info, epochs, key) = encode_my_proofs_request(sign_key, server_key, &proofs_req, idx);
+    let proofs_req = MyProofsRequest::new(epochs.clone());
+    let (user_info, vec_epochs, key) = encode_my_proofs_request(sign_key, server_key, &proofs_req, idx);
 
     let mut client = LocationStorageClient::connect(url).await?;
 
     let request = tonic::Request::new(RequestMyProofsRequest {
-        epochs,
+        epochs : vec_epochs,
         user_info,
     });
 
-   match client.request_my_proofs(request).await {
+    let proofs = match client.request_my_proofs(request).await {
         Ok(response) => {
             let response = response.get_ref();
-            if let Ok(x) = decode_my_proofs_response(&key, &public_key, &response.nonce, &response.proofs) {
-                Ok(x)
+            if let Ok(proofs) = decode_my_proofs_response(&key, &public_key, &response.nonce, &response.proofs) {
+                proofs
             } else {
-                Err(eyre!("obtain_location_report unable to validate server response "))
+                return Err(eyre!("obtain_location_report unable to validate server response "));
             }
         }
         Err(status) => return Err(eyre!("ObtainLocationReport failed with code {:?} and message {:?}.",
                             status.code(), status.message())),
+    };
+
+    for proof in proofs.iter() {
+        if !epochs.contains(&proof.epoch()){
+            return Err(eyre!("obtain_location_report unable to validate server response"));
+        }
     }
+    Ok(proofs.into_iter().collect())
 }

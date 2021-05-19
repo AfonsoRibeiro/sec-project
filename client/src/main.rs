@@ -152,7 +152,6 @@ async fn do_get_report_command(
     server_urls :  Arc<Vec<Uri>>,
     client_keys : Arc<ClientKeys>,
     server_keys : Arc<ServerPublicKey>,
-    necessary_res : usize,
     epoch : usize,
 
 ) {
@@ -169,24 +168,20 @@ async fn do_get_report_command(
             )
         ).collect();
 
-    let mut locations : Vec<(usize, usize)> = Vec::with_capacity(necessary_res + 1);
     loop {
         select! {
             res = responses.select_next_some() => {
                 if let Ok(loc) = res {
-                    locations.push(loc);
-                }
-
-                if locations.len() > necessary_res {
-                    break ;
+                    println!("location {:?}", loc);
+                    break;
                 }
             }
-            complete => break,
+            complete => {
+                println!("Unable to get report");
+                break;
+            }
         }
     }
-
-    println!("location {:?}", locations); // TODO only print most recent one
-
 }
 
 async fn do_get_proofs_command(
@@ -209,23 +204,29 @@ async fn do_get_proofs_command(
             )
         ).collect();
 
-    let mut proofs_res : Vec<Vec<Proof>> = Vec::with_capacity(necessary_res + 1);
+    let mut proofs_res : HashSet<Proof> = HashSet::new();
+    let mut counter : usize = 0;
     loop {
         select! {
             res = responses.select_next_some() => {
-                if let Ok(loc) = res {
-                    proofs_res.push(loc);
+                if let Ok(proofs) = res {
+                    if proofs.len() > proofs_res.len(){
+                        proofs_res = proofs;
+                    }
+                    counter += 1;
                 }
 
-                if proofs_res.len() > necessary_res {
+                if counter > necessary_res {
+                    println!("{:?}", proofs_res); 
                     break ;
                 }
             }
-            complete => break,
+            complete => {
+                println!("Quorum not achieved, might be incomplete: {:?}", proofs_res);
+                break;
+            } 
         }
     }
-
-    println!("{:?}", proofs_res);  // TODO only print most recent one
 }
 
 async fn read_commands(
@@ -260,7 +261,6 @@ async fn read_commands(
                     server_urls.clone(),
                     client_keys.clone(),
                     server_keys.clone(),
-                    necessary_res,
                     epoch.unwrap(),
                 ).await
 

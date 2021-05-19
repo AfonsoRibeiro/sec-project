@@ -3,7 +3,7 @@ use sodiumoxide::crypto::sign::{self, PublicKey, SecretKey};
 use color_eyre::eyre::{Result, Context};
 use eyre::eyre;
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Hash, Eq)]
 pub struct Proof {
     idx_req : usize,
     idx_ass : usize,

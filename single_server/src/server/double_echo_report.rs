@@ -335,7 +335,6 @@ impl DoubleEcho {
         client_id : usize,
         epoch : usize,
     ) {
-        println!("Sending Readys");
         let ready_write = Write::new_ready(message.clone(), client_id, epoch);
 
         self.logic.add_server_to_ready_msg(client_id, self.server_id, message);
@@ -410,10 +409,8 @@ async fn fase(
     }
     //println!("ack {:} | nec {:}", ack.len(), necessary_res);
     if ack.len() > necessary_res {
-        println!("Sent all");
         Ok(())
     } else {
-        println!("more sending");
         sleep(Duration::from_millis(1000)).await;
         fase(
             server_id,
@@ -521,7 +518,6 @@ impl DoubleEchoBroadcast for MyDoubleEchoWrite {
         let message = &write.report;
 
         if write.is_echo() {
-            println!("Recieved echo | from server {:} and client {:}", info.server_id, write.client_id);
 
             if !self.echo.logic.has_echo_message(write.client_id, message) {
                 match self.echo.get_report_from_signed(message, write.client_id) {
@@ -544,13 +540,11 @@ impl DoubleEchoBroadcast for MyDoubleEchoWrite {
 
             if self.echo.logic.add_server_to_echo_msg(write.client_id, info.server_id, message) > self.echo.necessary_res {
                 if self.echo.logic.start_ready(write.client_id, write.epoch) {
-                    println!("Going to ready mode {:}", write.client_id);
                     self.echo.ready_fase(message, write.client_id, write.epoch);
                 }
             }
 
         } else { // READY
-            println!("Recieved Ready | from server {:} and client {:}", info.server_id, write.client_id);
 
             if !self.echo.logic.has_ready_message(write.client_id, message) {
                 match self.echo.get_report_from_signed(message, write.client_id) {
@@ -575,13 +569,11 @@ impl DoubleEchoBroadcast for MyDoubleEchoWrite {
 
             if n > self.echo.f_servers {
                 if self.echo.logic.start_ready(write.client_id, write.epoch) {
-                    println!("Going by ready to ready mode {:}", write.client_id);
                     self.echo.ready_fase(message, write.client_id, write.epoch);
                 }
             }
             if n > self.echo.necessary_res {
                 if self.echo.logic.start_deliver(write.client_id, write.epoch) {
-                    println!("Delivering {:}", write.client_id);
                     let _x = self.echo.deliver(message, write.client_id).await;
                 }
             }

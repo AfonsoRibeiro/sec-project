@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use eyre::eyre;
 use color_eyre::eyre::Result;
@@ -51,10 +51,10 @@ pub async fn obtain_location_report(
     };
 
     let (x, y) = report.loc();
-    if x < grid_size && y < grid_size {
+    if x < grid_size && y < grid_size && epoch == report.epoch(){
         Ok((x, y))
     } else {
-        Err(eyre!("Response : Not a valid position (x : {:}, y : {:})", x, y))
+        Err(eyre!("Response : Not a valid position (x : {:}, y : {:}) or not the same epoch!", x, y))
     }
 }
 
@@ -66,7 +66,7 @@ pub async fn obtain_users_at_location(
     sign_key : &sign::SecretKey,
     server_key : &box_::PublicKey,
     clients_public_keys : &HashMap<usize, sign::PublicKey>
-) -> Result<Vec<usize>> {
+) -> Result<HashSet<usize>> {
 
     let mut client = LocationMasterClient::connect(url).await?;
 
@@ -82,14 +82,14 @@ pub async fn obtain_users_at_location(
         Ok(response) => {
             let response = response.get_ref();
             if let Ok(res) = status::decode_users_at_loc_response(&key, &response.nonce, &response.idxs) {
-                let mut idxs = vec![];
+                let mut idxs : HashSet<usize> = HashSet::new();
                 for (idx, report) in res.idxs_reports.iter() {
                     if !clients_public_keys.contains_key(idx) {
                         return Err(eyre!("obtain_location_report unable to find user"));
                     }
                     if let Ok(report) = report::verify_report(clients_public_keys.get(idx).unwrap(), report) {
                         if report.epoch() == epoch && report.loc() == (pos_x, pos_y) {
-                            idxs.push(*idx);
+                            idxs.insert(*idx);
                         } else {
                             return Err(eyre!("obtain_location_report unable to validate all users reports"));
                         }

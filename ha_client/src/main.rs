@@ -1,6 +1,6 @@
 mod verifying;
 
-use std::sync::Arc;
+use std::{collections::{HashMap, HashSet}, sync::Arc};
 
 use futures::stream::{FuturesUnordered, StreamExt};
 use futures::select;
@@ -46,7 +46,7 @@ async fn main() -> Result<()> {
 
     sodiumoxide::init().expect("Unable to make sodiumoxide thread safe");
 
-    read_commands(opt.grid_size, server_urls, &ha_keys, &server_keys, necessary_res).await;
+    read_commands(opt.grid_size, server_urls, &ha_keys, &server_keys, necessary_res, f_servers).await;
 
     Ok(())
 }
@@ -56,7 +56,7 @@ async fn do_report_command(
     server_urls :  Arc<Vec<Uri>>,
     ha_keys : &HAClientKeys,
     server_keys : &ServerPublicKey,
-    necessary_res : usize,
+    f_servers : usize,
     idx : usize,
     epoch : usize,
 ) {
@@ -79,23 +79,40 @@ async fn do_report_command(
             )
         ).collect();
 
-    let mut locations : Vec<(usize, usize)> = Vec::with_capacity(necessary_res + 1);
+    let mut locations : HashMap<(usize, usize), usize> = HashMap::new();
+    let mut location : (usize, usize) = (usize::MAX, usize::MAX);
+    let mut max : usize = 0;
     loop {
         select! {
             res = responses.select_next_some() => {
                 if let Ok(loc) = res {
-                    locations.push(loc);
+                    match locations.get_mut(&loc) {
+                        Some(n) => {
+                            *n += 1;
+                            if *n > max {
+                                max = *n;
+                                location = loc;
+                            }
+                        }
+                        None => {
+                            if max == 0 {
+                                max = 1;
+                                location = loc.clone();
+                            }
+                            locations.insert(loc, 1);
+                        }
+                    };
                 }
 
-                if locations.len() > necessary_res {
+
+                if max > f_servers {
+                    println!("{:?}" ,location);
                     break ;
                 }
             }
             complete => break,
         }
     }
-
-    println!("{:?}", locations);
 }
 
 async fn do_get_users_at_loc_command(
@@ -108,7 +125,6 @@ async fn do_get_users_at_loc_command(
     pos_y : usize,
 ) {
 
-    println!("{:} {:} {:}", epoch, pos_x, pos_y);
     let mut responses : FuturesUnordered<_> = server_urls.iter().enumerate().map(
         |(server_id, url)|
             verifying::obtain_users_at_location(
@@ -122,7 +138,7 @@ async fn do_get_users_at_loc_command(
             )
         ).collect();
 
-    let mut all_users : Vec<Vec<usize>> = Vec::with_capacity(necessary_res + 1);
+    let mut all_users : Vec<HashSet<usize>> = Vec::with_capacity(necessary_res + 1);
     loop {
         select! {
             res = responses.select_next_some() => {
@@ -137,8 +153,27 @@ async fn do_get_users_at_loc_command(
             complete => break,
         }
     }
+    let mut max_occurencies : usize = 0;
+    let mut max_occurencies_set = HashSet::new();
+    for i in 0..((all_users.len() + 1)/2) {
+        let mut occurencies : usize = 1;
+        for j in (i+1)..all_users.len() {
+            if all_users[i].len() == all_users[j].len(){
+                for user in all_users[i].iter(){
+                    if !all_users[j].contains(user) {
+                        continue;
+                    }
+                }
+                occurencies += 1;
+            }
+        }
+        if occurencies > max_occurencies {
+            max_occurencies = occurencies;
+            max_occurencies_set = all_users[i].clone();
+        }
+    }
 
-    println!("{:?}", all_users);
+    println!("{:?}", max_occurencies_set);
 
 }
 
@@ -148,6 +183,7 @@ async fn read_commands(
     ha_keys : &HAClientKeys,
     server_keys : &ServerPublicKey,
     necessary_res : usize,
+    f_servers : usize,
 ) {
     print_command_msg();
 
@@ -171,7 +207,7 @@ async fn read_commands(
                     server_urls.clone(),
                     ha_keys,
                     server_keys,
-                    necessary_res,
+                    f_servers,
                     idx.unwrap(),
                     epoch.unwrap()
                 ).await;
