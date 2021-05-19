@@ -1,20 +1,12 @@
-Same client cant read and write at same time !!!!
-
 TODO GENERAL:
 
     Investigate each algorithm /* ONLY FOR DEBATE */
-
-    Have blacklist for each epoch /* STEP 5 */
 
     Randomize vector urls
 
 
 TODO IMPORTANT:
 
-    Keystore /* As soon as possible */
-
-    Notify server write is done
-
-    Spamm
+    Spamm (Have blacklist for each epoch /* STEP 5 */)
 
     Tests

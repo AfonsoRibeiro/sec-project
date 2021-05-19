@@ -1,14 +1,15 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, io::{Read, Write}};
 use std::fs;
 
 use std::fs::File;
 use std::io::{BufReader, BufWriter};
 use color_eyre::eyre::{Context, Result};
+use eyre::eyre;
 
 use serde_derive::{Deserialize, Serialize};
 use sodiumoxide::crypto::box_;
 use sodiumoxide::crypto::sign;
-
+use sodiumoxide::crypto::secretbox;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ClientKeys {
@@ -85,6 +86,21 @@ impl ServerPublicKey {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+struct Pass {
+    pass : secretbox::Key,
+    nonce : secretbox::Nonce,
+}
+
+impl Pass {
+    fn new(pass : secretbox::Key, nonce : secretbox::Nonce) -> Pass {
+        Pass {
+            pass,
+            nonce,
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ServerKeys {
     private_key : box_::SecretKey,
     sign_key : sign::SecretKey,
@@ -126,7 +142,9 @@ impl ServerKeys{
 }
 
 pub fn save_keys(n_clients : usize, n_servers : usize, keys_dir : String) -> Result<()> {
+    let pass_dir = format!("{:}/pass", keys_dir);
     fs::create_dir_all(&keys_dir)?;
+    fs::create_dir_all(&pass_dir)?;
 
     let mut clients_public_keys = HashMap::new();
     let mut client_secret_pairs =  HashMap::new();
@@ -177,16 +195,38 @@ pub fn save_keys(n_clients : usize, n_servers : usize, keys_dir : String) -> Res
 
 fn save_client_keys(keys_dir : &str, idx : usize, client : ClientKeys) -> Result<()> {
     let file = File::create(format!("{:}/client_{:04}.keys", keys_dir, idx))?;
+    let pass_file = File::create(format!("{:}/pass/client_{:04}.keys", keys_dir, idx))?;
 
-    serde_json::to_writer(BufWriter::new(file), &client)?;
+    let pass = Pass::new(
+        secretbox::gen_key(),
+        secretbox::gen_nonce(),
+    );
+
+    serde_json::to_writer(BufWriter::new(pass_file), &pass)?;
+
+    let text = serde_json::to_vec(&client).unwrap();
+    let encoded_keys = secretbox::seal(&text, &pass.nonce, &pass.pass);
+
+    BufWriter::new(file).write_all(&encoded_keys)?;
 
     Ok(())
 }
 
 fn save_server_keys(keys_dir : &str, server_idx : usize, server : ServerKeys)  -> Result<()> {
     let file = File::create(format!("{:}/server_{:02}.keys", keys_dir, server_idx))?;
+    let pass_file = File::create(format!("{:}/pass/server_{:02}.keys", keys_dir, server_idx))?;
 
-    serde_json::to_writer(BufWriter::new(file), &server)?;
+    let pass = Pass::new(
+        secretbox::gen_key(),
+        secretbox::gen_nonce(),
+    );
+
+    serde_json::to_writer(BufWriter::new(pass_file), &pass)?;
+
+    let text = serde_json::to_vec(&server).unwrap();
+    let encoded_keys = secretbox::seal(&text, &pass.nonce, &pass.pass);
+
+    BufWriter::new(file).write_all(&encoded_keys)?;
 
     Ok(())
 }
@@ -201,8 +241,19 @@ fn save_servers_public_keys(keys_dir : &str, server_pub : ServerPublicKey) -> Re
 
 fn save_ha_client_keys(keys_dir : &str, ha_keys : HAClientKeys) -> Result<()> {
     let file = File::create(format!("{:}/ha_client.keys", keys_dir))?;
+    let pass_file = File::create(format!("{:}/pass/ha_client.keys", keys_dir))?;
 
-    serde_json::to_writer(BufWriter::new(file), &ha_keys)?;
+    let pass = Pass::new(
+        secretbox::gen_key(),
+        secretbox::gen_nonce(),
+    );
+
+    serde_json::to_writer(BufWriter::new(pass_file), &pass)?;
+
+    let text = serde_json::to_vec(&ha_keys).unwrap();
+    let encoded_keys = secretbox::seal(&text, &pass.nonce, &pass.pass);
+
+    BufWriter::new(file).write_all(&encoded_keys)?;
 
     Ok(())
 }
@@ -210,21 +261,46 @@ fn save_ha_client_keys(keys_dir : &str, ha_keys : HAClientKeys) -> Result<()> {
 #[allow(dead_code)]
 pub fn retrieve_client_keys(keys_dir : &str, idx : usize) -> Result<ClientKeys> {
     let file = File::open(format!("{:}/client_{:04}.keys", keys_dir, idx))?;
-    let reader = BufReader::new(file);
+    let pass_file = File::open(format!("{:}/pass/client_{:04}.keys", keys_dir, idx))?;
 
-    Ok(serde_json::from_reader(reader).wrap_err_with(
-        || format!("Failed to parse struct ClientKeys from file '{:}'", format!("{:}/client_{:04}.keys", keys_dir, idx))
-    )? )
+    let reader_pass = BufReader::new(pass_file);
+
+    let pass : Pass = serde_json::from_reader(reader_pass)?;
+
+    let mut reader = BufReader::new(file);
+
+    let mut encoded_keys : Vec<u8> = vec![];
+    reader.read_to_end(&mut encoded_keys)?;
+
+    match secretbox::open(&encoded_keys, &pass.nonce, &pass.pass) {
+        Ok(text) => Ok(serde_json::from_slice(&text).wrap_err_with(
+                    || format!("Failed to parse struct ClientKeys from file '{:}'", format!("{:}/client_{:04}.keys", keys_dir, idx))
+                )? ),
+        Err(_) => Err(eyre!("retrieve_client_keys: unhable to decode keys")),
+    }
 }
 
 #[allow(dead_code)]
 pub fn retrieve_server_keys(keys_dir : &str, server_idx : usize)  -> Result<ServerKeys> {
     let file = File::open(format!("{:}/server_{:02}.keys", keys_dir, server_idx))?;
-    let reader = BufReader::new(file);
+    let pass_file = File::open(format!("{:}/pass/server_{:02}.keys", keys_dir, server_idx))?;
 
-    Ok(serde_json::from_reader(reader).wrap_err_with(
-        || format!("Failed to parse struct ServerKeys from file '{:}'", format!("{:}/server.keys", keys_dir))
-    )? )
+    let reader_pass = BufReader::new(pass_file);
+
+    let pass : Pass = serde_json::from_reader(reader_pass)?;
+
+    let mut reader = BufReader::new(file);
+
+    let mut encoded_keys : Vec<u8> = vec![];
+    reader.read_to_end(&mut encoded_keys)?;
+
+    match secretbox::open(&encoded_keys, &pass.nonce, &pass.pass) {
+        Ok(text) => Ok(serde_json::from_slice(&text).wrap_err_with(
+                    || format!("Failed to parse struct ServerKeys from file '{:}'", format!("{:}/server.keys", keys_dir))
+                )? ),
+        Err(_) => Err(eyre!("retrieve_client_keys: unhable to decode keys")),
+    }
+
 }
 
 #[allow(dead_code)]
@@ -240,9 +316,21 @@ pub fn retrieve_servers_public_keys(keys_dir : &str) -> Result<ServerPublicKey> 
 #[allow(dead_code)]
 pub fn retrieve_ha_client_keys(keys_dir : &str) -> Result<HAClientKeys> {
     let file = File::open(format!("{:}/ha_client.keys", keys_dir))?;
-    let reader = BufReader::new(file);
+    let pass_file = File::open(format!("{:}/pass/ha_client.keys", keys_dir))?;
 
-    Ok(serde_json::from_reader(reader).wrap_err_with(
-        || format!("Failed to parse struct HAClientKeys from file '{:}'", format!("{:}/server_public.keys", keys_dir))
-    )? )
+    let reader_pass = BufReader::new(pass_file);
+
+    let pass : Pass = serde_json::from_reader(reader_pass)?;
+
+    let mut reader = BufReader::new(file);
+
+    let mut encoded_keys : Vec<u8> = vec![];
+    reader.read_to_end(&mut encoded_keys)?;
+
+    match secretbox::open(&encoded_keys, &pass.nonce, &pass.pass) {
+        Ok(text) => Ok(serde_json::from_slice(&text).wrap_err_with(
+                    || format!("Failed to parse struct HAClientKeys from file '{:}'", format!("{:}/server_public.keys", keys_dir))
+                )? ),
+        Err(_) => Err(eyre!("retrieve_client_keys: unhable to decode keys")),
+    }
 }
