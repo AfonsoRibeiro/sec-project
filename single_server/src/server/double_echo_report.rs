@@ -2,6 +2,7 @@ use std::{collections::{HashMap, HashSet}, sync::{Arc, RwLock}, time::Duration};
 
 use futures::stream::{FuturesUnordered, StreamExt};
 use futures::select;
+use futures::channel::oneshot::{self, Sender, Receiver};
 
 use async_recursion::async_recursion;
 
@@ -21,7 +22,10 @@ struct Logic {
     readys : RwLock<HashMap<usize, HashMap<Vec<u8>, HashSet<usize>>>>, // client id -> m -> server id
     sent_echo  : RwLock<HashMap<usize, HashSet<usize>>>, // client id -> epoch
     sent_ready : RwLock<HashMap<usize, HashSet<usize>>>, // client id -> epoch
-    delivered  : RwLock<HashMap<usize, HashSet<usize>>>, // client id -> epoch
+    delivered  : RwLock< (
+                    HashMap<usize, HashSet<usize>>, // client id -> epoch
+                    HashMap<usize, Sender<usize>> // client id -> notification
+                ) >,
 }
 
 impl Logic {
@@ -32,7 +36,7 @@ impl Logic {
             readys : RwLock::new(HashMap::new()),
             sent_echo  : RwLock::new(HashMap::new()),
             sent_ready : RwLock::new(HashMap::new()),
-            delivered  : RwLock::new(HashMap::new()),
+            delivered  : RwLock::new( (HashMap::new(), HashMap::new()) ),
         }
     }
 
@@ -70,17 +74,19 @@ impl Logic {
         }
     }
 
-    fn start_deliver(&self, client_id : usize, epoch : usize) -> bool {
+    fn start_deliver(&self, client_id : usize, epoch : usize) -> (bool, Option<Sender<usize>>) {
         let mut delivered = self.delivered.write().unwrap();
-        let start = match delivered.get_mut(&client_id) {
+        let start = match delivered.0.get_mut(&client_id) {
             Some(epoch_delivered) => epoch_delivered.insert(epoch),
             None => {
                 let mut epoch_delivered = HashSet::new();
                 epoch_delivered.insert(epoch);
-                delivered.insert(client_id, epoch_delivered);
+                delivered.0.insert(client_id, epoch_delivered);
                 true
             }
         };
+
+        let sender = delivered.1.remove(&client_id);
 
         if start {
             let mut client_echos = self.echos.write().unwrap();
@@ -88,11 +94,36 @@ impl Logic {
             client_echos.insert(client_id, HashMap::new());
             client_readys.insert(client_id, HashMap::new());
         }
-        start
+        (start, sender)
+    }
+
+    fn has_been_delivered_or_add_notify(&self, client_id : usize, epoch : usize) -> Option<Receiver<usize>> {
+        let mut has_been_delivered = self.has_been_delivered(client_id, epoch);
+
+        if has_been_delivered {
+            return None;
+        }
+
+        let mut delivered = self.delivered.write().unwrap();
+
+        has_been_delivered = match delivered.0.get(&client_id) {
+            Some(epochs_delivered) => epochs_delivered.contains(&epoch),
+            None => false,
+        };
+
+        if has_been_delivered {
+            return None;
+        }
+
+        let (sender, receiver) = oneshot::channel::<usize>();
+
+        delivered.1.insert(client_id, sender);
+
+        Some(receiver)
     }
 
     fn has_been_delivered(&self, client_id : usize, epoch : usize) -> bool {
-        match self.delivered.read().unwrap().get(&client_id) {
+        match self.delivered.read().unwrap().0.get(&client_id) {
             Some(epochs_delivered) => epochs_delivered.contains(&epoch),
             None => false,
         }
@@ -295,17 +326,25 @@ impl DoubleEcho {
             return Err(eyre!("Not a valid report"));
         }
 
-        if self.logic.has_been_delivered(client_id, report.epoch()) {
-            return Ok(());
-        }
+        let reciever = match self.logic.has_been_delivered_or_add_notify(client_id, report.epoch()) {
+            None => { return Ok({}); }
+            Some(reciever) => reciever,
+        };
 
         if self.logic.start_echo(client_id, report.epoch()) {
             self.echo_fase(message, client_id, report.epoch());
         }
 
-        // TODO wait for delivery done
-
-        Ok(())
+        match reciever.await {
+            Ok(ok) => {
+                if ok == 0 {
+                    Ok(())
+                } else {
+                    Err(eyre!("Failed write"))
+                }
+            },
+            Err(_) => Err(eyre!("Failed write")),
+        }
     }
 
     fn echo_fase(
@@ -573,8 +612,21 @@ impl DoubleEchoBroadcast for MyDoubleEchoWrite {
                 }
             }
             if n > self.echo.necessary_res {
-                if self.echo.logic.start_deliver(write.client_id, write.epoch) {
-                    let _x = self.echo.deliver(message, write.client_id).await;
+                match self.echo.logic.start_deliver(write.client_id, write.epoch) {
+                    (false, _) => {} // noop
+                    (true, None) => {
+                        if let Err(err) = self.echo.deliver(message, write.client_id).await {
+                            return Err(Status::aborted(err.to_string()));
+                        }
+                    }
+                    (true, Some(sender)) => {
+                        if let Err(err) = self.echo.deliver(message, write.client_id).await {
+                            let _x = sender.send(1);
+                            return Err(Status::aborted(err.to_string()));
+                        } else {
+                            let _x = sender.send(0);
+                        }
+                    }
                 }
             }
 

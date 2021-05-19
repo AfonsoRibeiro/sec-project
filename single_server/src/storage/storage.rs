@@ -172,8 +172,6 @@ impl Timeline {
     pub fn get_users_at_epoch_at_location(&self, epoch: usize, (pos_x, pos_y) : (usize, usize)) -> Option<Vec<(usize, Vec<u8>)>> {
         let vec = self.timeline.read().unwrap();
 
-        println!("{:} {:} {:}", epoch, pos_x, pos_y);
-
         if vec.len() > epoch && self.valid_pos(pos_x, pos_y) {
             let mut idxs_reports = vec![];
             let epoch_map = self.routes.read().unwrap();
@@ -185,7 +183,6 @@ impl Timeline {
                     println!("WHY ME")
                 }
             }
-            println!("Users found {:?}", idxs_reports);
             Some(idxs_reports)
         } else {
             None

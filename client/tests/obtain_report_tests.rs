@@ -33,7 +33,6 @@ pub async fn get_submited_report () {
     if let Some(location) = timeline.get_location_at_epoch(IDX, EPOCH) {
         let loc_res =
             reports::obtain_location_report(
-                timeline,
                 IDX,
                 EPOCH,
                 server_url,
@@ -60,13 +59,10 @@ pub async fn get_not_mine_submitted_report () {
     let client_keys = common::get_client_keys(IDX);
     let server_key = common::get_pub_server_key();
 
-    let timeline = common::get_timeline();
-
     sleep(Duration::from_millis(2000)).await; //allow time for user to have submited report
 
     let loc_res =
         reports::obtain_location_report(
-            timeline,
             NOT_MINE_IDX,
             EPOCH,
             server_url,
@@ -88,11 +84,8 @@ pub async fn get_not_submitted_yet_report () {
     let client_keys = common::get_client_keys(IDX);
     let server_key = common::get_pub_server_key();
 
-    let timeline = common::get_timeline();
-
     let loc_res =
         reports::obtain_location_report(
-            timeline,
             NOT_MINE_IDX,
             N_EPOCHS,
             server_url,

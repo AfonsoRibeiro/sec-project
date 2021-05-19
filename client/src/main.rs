@@ -68,7 +68,7 @@ async fn main() -> Result<()> {
 
     tokio::spawn(epochs_generator(timeline.clone(), opt.idx, server_urls.clone(), client_keys.clone(), server_keys.clone(), necessary_res));
 
-    read_commands(timeline.clone(), opt.idx, server_urls, client_keys, server_keys, necessary_res).await;
+    read_commands(opt.idx, server_urls, client_keys, server_keys, necessary_res).await;
 
     let _x = proofer.await; // Not important result just dont end
 
@@ -147,7 +147,6 @@ async fn epochs_generator(
 }
 
 async fn do_get_report_command(
-    timeline : Arc<Timeline>,
     idx : usize,
     server_urls :  Arc<Vec<Uri>>,
     client_keys : Arc<ClientKeys>,
@@ -158,7 +157,6 @@ async fn do_get_report_command(
     let mut responses : FuturesUnordered<_> = server_urls.iter().enumerate().map(
         |(server_id, url)|
             reports::obtain_location_report(
-                timeline.clone(),
                 idx,
                 epoch,
                 url.clone(),
@@ -217,20 +215,19 @@ async fn do_get_proofs_command(
                 }
 
                 if counter > necessary_res {
-                    println!("{:?}", proofs_res); 
+                    println!("{:?}", proofs_res);
                     break ;
                 }
             }
             complete => {
                 println!("Quorum not achieved, might be incomplete: {:?}", proofs_res);
                 break;
-            } 
+            }
         }
     }
 }
 
 async fn read_commands(
-    timeline : Arc<Timeline>,
     idx : usize,
     server_urls :  Arc<Vec<Uri>>,
     client_keys : Arc<ClientKeys>,
@@ -256,7 +253,6 @@ async fn read_commands(
                 if epoch.is_err() { print_command_msg(); continue; }
 
                 do_get_report_command(
-                    timeline.clone(),
                     idx,
                     server_urls.clone(),
                     client_keys.clone(),
@@ -264,7 +260,7 @@ async fn read_commands(
                     epoch.unwrap(),
                 ).await
 
-            } if rproofs_pat.is_match(buffer.trim_end()) {
+            } else if rproofs_pat.is_match(buffer.trim_end()) {
                 let mut epochs = HashSet::new();
                 for epoch in buffer.trim_end().split(' ') {
                     if let Ok(epoch) = epoch.parse::<usize>() {
@@ -289,7 +285,7 @@ async fn read_commands(
 
 fn print_command_msg() {
     println!("To obtain a report use: report <epoch>");
-    println!("To obtain proofs recieved by server use: proof <epoch>+");
+    println!("To obtain proofs recieved by server use: proof <epoch>");
 }
 
 fn get_servers_url(n_servers : usize ) -> Arc<Vec<Uri>> {

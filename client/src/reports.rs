@@ -1,11 +1,9 @@
 use eyre::eyre;
 use color_eyre::eyre::Result;
 
-use std::{collections::HashSet, sync::Arc};
+use std::{collections::HashSet};
 use tonic::transport::Uri;
 
-use grid::grid::Timeline;
-use std::iter::FromIterator;
 use protos::{location_storage::{ObtainLocationReportRequest, SubmitLocationReportRequest, RequestMyProofsRequest}};
 use protos::location_storage::location_storage_client::LocationStorageClient;
 
@@ -53,7 +51,6 @@ pub async fn submit_location_report(
 
 
 pub async fn obtain_location_report(
-    timeline : Arc<Timeline>,
     idx : usize,
     epoch : usize,
     url : Uri,
