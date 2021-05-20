@@ -1,7 +1,5 @@
 mod common;
 
-/// Requires ./sbin/proofing_test_setup.sh
-
 use client::{proofing_system, reports};
 use security::report::Report;
 use security::proof::{Proof, sign_proof};

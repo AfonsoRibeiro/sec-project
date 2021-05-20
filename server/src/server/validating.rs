@@ -86,8 +86,6 @@ impl LocationStorage for MyLocationStorage {
             Err(_) => return  Err(Status::permission_denied("Unable to decrypt report"))
         };
 
-        // TODO CHECK NOT ALREADY SENTECHO = FALSE
-
         if !self.storage.report_not_submitted_at_epoch(report.epoch(), info.idx()) {
             let nonce = secretbox::gen_nonce();
             return Ok(Response::new(SubmitLocationReportResponse {

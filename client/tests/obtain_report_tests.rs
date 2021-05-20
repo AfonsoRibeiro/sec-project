@@ -19,7 +19,7 @@ const N_EPOCHS : usize = 10;
 #[tokio::test]
 #[ignore]
 pub async fn get_submited_report () {
-    let server_url : Uri = Uri::from_static("http://[::1]:50051");
+    let server_url : Uri = Uri::from_static("http://[::1]:50000");
 
     common::make_thread_safe();
 
@@ -52,7 +52,7 @@ pub async fn get_submited_report () {
 #[tokio::test]
 #[ignore]
 pub async fn get_not_mine_submitted_report () {
-    let server_url : Uri = Uri::from_static("http://[::1]:50051");
+    let server_url : Uri = Uri::from_static("http://[::1]:50000");
 
     common::make_thread_safe();
 
@@ -77,7 +77,7 @@ pub async fn get_not_mine_submitted_report () {
 #[tokio::test]
 #[ignore]
 pub async fn get_not_submitted_yet_report () {
-    let server_url : Uri = Uri::from_static("http://[::1]:50051");
+    let server_url : Uri = Uri::from_static("http://[::1]:50000");
 
     common::make_thread_safe();
 

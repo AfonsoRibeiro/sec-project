@@ -20,7 +20,7 @@ const N_EPOCHS : usize = 10;
 #[tokio::test]
 #[ignore]
 pub async fn get_submited_report () {
-    let server_url : Uri = Uri::from_static("http://[::1]:50051");
+    let server_url : Uri = Uri::from_static("http://[::1]:50000");
 
     common::make_thread_safe();
 
@@ -53,7 +53,7 @@ pub async fn get_submited_report () {
 #[tokio::test]
 #[ignore]
 pub async fn get_not_submited_report () {
-    let server_url : Uri = Uri::from_static("http://[::1]:50051");
+    let server_url : Uri = Uri::from_static("http://[::1]:50000");
 
     common::make_thread_safe();
 
@@ -77,7 +77,7 @@ pub async fn get_not_submited_report () {
 #[tokio::test]
 #[ignore]
 pub async fn get_invalid_id_report () {
-    let server_url : Uri = Uri::from_static("http://[::1]:50051");
+    let server_url : Uri = Uri::from_static("http://[::1]:50000");
 
     common::make_thread_safe();
 
@@ -101,7 +101,7 @@ pub async fn get_invalid_id_report () {
 #[tokio::test]
 #[ignore]
 pub async fn get_location_report_invalid_signature () {
-    let server_url : Uri = Uri::from_static("http://[::1]:50051");
+    let server_url : Uri = Uri::from_static("http://[::1]:50000");
 
     common::make_thread_safe();
 
@@ -125,7 +125,7 @@ pub async fn get_location_report_invalid_signature () {
 #[tokio::test]
 #[ignore]
 pub async fn get_users_at_location_at_epoch () {
-    let server_url : Uri = Uri::from_static("http://[::1]:50051");
+    let server_url : Uri = Uri::from_static("http://[::1]:50000");
 
     common::make_thread_safe();
 
@@ -171,7 +171,7 @@ pub async fn get_users_at_location_at_epoch () {
 #[tokio::test]
 #[ignore]
 pub async fn get_users_bad_location () {
-    let server_url : Uri = Uri::from_static("http://[::1]:50051");
+    let server_url : Uri = Uri::from_static("http://[::1]:50000");
 
     common::make_thread_safe();
 
@@ -195,7 +195,7 @@ pub async fn get_users_bad_location () {
 #[tokio::test]
 #[ignore]
 pub async fn get_users_not_existent_epoch () {
-    let server_url : Uri = Uri::from_static("http://[::1]:50051");
+    let server_url : Uri = Uri::from_static("http://[::1]:50000");
 
     common::make_thread_safe();
 
@@ -219,7 +219,7 @@ pub async fn get_users_not_existent_epoch () {
 #[tokio::test]
 #[ignore]
 pub async fn get_users_invalid_signature () {
-    let server_url : Uri = Uri::from_static("http://[::1]:50051");
+    let server_url : Uri = Uri::from_static("http://[::1]:50000");
 
     common::make_thread_safe();
 

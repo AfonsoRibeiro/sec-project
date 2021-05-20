@@ -257,11 +257,13 @@ mod tests {
 
     const SIZE : usize = 10;
     const EPOCH : usize = 5;
-    const FILENAME : &str = "/storage/storage.txt";
+    const FILENAME : &str = "storage/test.txt";
     const POS_X : usize = 3;
     const DIFF_POS_X : usize = 5;
     const POS_Y : usize = 5;
     const IDX : usize = 785;
+    const IDX_OTHER : usize = 50;
+    const EPOCH_2 : usize = 8;
 
     #[test]
     fn new_grid() {
@@ -324,6 +326,59 @@ mod tests {
 
         assert!(storage.add_user_location_at_epoch(EPOCH, (SIZE, POS_Y), IDX, "report".as_bytes().to_vec()).is_err());
     }
+
+    #[test]
+    fn add_proof_of_epoch() {
+        let storage = Timeline::new(SIZE, FILENAME.to_string());
+
+        let proof_1 = (IDX, EPOCH,   b"id:0 | epoch:0".to_vec());
+
+        storage.add_proofs(vec![ proof_1.clone() ]);
+
+        let mut set = HashSet::new();
+        set.insert(EPOCH);
+
+        let proofs = storage.get_proofs(IDX, &set);
+
+        assert_eq!(1, proofs.len());
+
+        assert_eq!(proof_1.2, proofs[0]);
+    }
+
+    #[test]
+    fn add_proofs_of_diff_epoch() {
+        let storage = Timeline::new(SIZE, FILENAME.to_string());
+
+        let proof_1 = (IDX, EPOCH, b"id:0 | epoch:0".to_vec());
+        let proof_2 = (IDX, EPOCH_2, b"id:0 | epoch:1".to_vec());
+
+        storage.add_proofs(vec![ proof_1.clone(), proof_2.clone() ]);
+
+        let mut set = HashSet::new();
+        set.insert(EPOCH);
+        set.insert(EPOCH_2);
+
+        let proofs = storage.get_proofs(IDX, &set);
+
+        assert_eq!(2, proofs.len());
+    }
+
+    #[test]
+    fn add_not_my_proof() {
+        let storage = Timeline::new(SIZE, FILENAME.to_string());
+
+        let proof_other = (IDX_OTHER, EPOCH, b"id:1 | epoch:0".to_vec());
+
+        storage.add_proofs(vec![ proof_other.clone() ]);
+
+        let mut set = HashSet::new();
+        set.insert(EPOCH);
+
+        let proofs = storage.get_proofs(IDX, &set);
+
+        assert_eq!(0, proofs.len());
+    }
+
 
     #[test]
     fn double_report_at_same_epoch_diff_pos() {

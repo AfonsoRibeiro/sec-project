@@ -170,7 +170,7 @@ impl Logic {
         }
     }
 
-    fn has_ready_message(&self, client_id : usize, message : &Vec<u8>) -> bool{
+    fn has_ready_message(&self, client_id : usize, message : &Vec<u8>) -> bool {
         let client_msgs = self.readys.read().unwrap();
         match client_msgs.get(&client_id) {
             Some(msgs) => msgs.contains_key(message),
@@ -637,5 +637,263 @@ impl DoubleEchoBroadcast for MyDoubleEchoWrite {
             nonce : nonce.0.to_vec(),
             ok : secretbox::seal(b"", &nonce, &info.key),
         }))
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    const N_SERVERS : usize = 5;
+    const SERVER_ID : usize = 3;
+    const OTHER_SERVER_ID : usize = 1;
+    const CLIENT_ID : usize = 7;
+    const OTHER_CLIENT_ID : usize = 4;
+    const EPOCH : usize = 5;
+    const OTHER_EPOCH : usize = 7;
+
+    #[test]
+    fn start_echo() {
+        let logic = Logic::new(N_SERVERS);
+
+        assert!(logic.start_echo(CLIENT_ID, EPOCH));
+    }
+
+    #[test]
+    fn double_start_echo_same_client() {
+        let logic = Logic::new(N_SERVERS);
+
+        assert!(logic.start_echo(CLIENT_ID, EPOCH));
+        assert!(!logic.start_echo(CLIENT_ID, EPOCH));
+    }
+
+    #[test]
+    fn double_start_echo_diff_client() {
+        let logic = Logic::new(N_SERVERS);
+
+        assert!(logic.start_echo(CLIENT_ID, EPOCH));
+        assert!(logic.start_echo(OTHER_CLIENT_ID, EPOCH));
+    }
+
+    #[test]
+    fn double_start_echo_diff_epoch() {
+        let logic = Logic::new(N_SERVERS);
+
+        assert!(logic.start_echo(CLIENT_ID, EPOCH));
+        assert!(logic.start_echo(CLIENT_ID, OTHER_EPOCH));
+    }
+
+    #[test]
+    fn start_ready() {
+        let logic = Logic::new(N_SERVERS);
+
+        assert!(logic.start_ready(CLIENT_ID, EPOCH));
+    }
+
+    #[test]
+    fn double_start_ready_same_client() {
+        let logic = Logic::new(N_SERVERS);
+
+        assert!(logic.start_ready(CLIENT_ID, EPOCH));
+        assert!(!logic.start_ready(CLIENT_ID, EPOCH));
+    }
+
+    #[test]
+    fn double_start_ready_diff_client() {
+        let logic = Logic::new(N_SERVERS);
+
+        assert!(logic.start_ready(CLIENT_ID, EPOCH));
+        assert!(logic.start_ready(OTHER_CLIENT_ID, EPOCH));
+    }
+
+    #[test]
+    fn double_start_ready_diff_epoch() {
+        let logic = Logic::new(N_SERVERS);
+
+        assert!(logic.start_ready(CLIENT_ID, EPOCH));
+        assert!(logic.start_ready(CLIENT_ID, OTHER_EPOCH));
+    }
+
+    #[test]
+    fn start_deliver() {
+        let logic = Logic::new(N_SERVERS);
+
+        assert!(logic.start_deliver(CLIENT_ID, EPOCH).0);
+    }
+
+    #[test]
+    fn double_start_deliver_same_client() {
+        let logic = Logic::new(N_SERVERS);
+
+        assert!(logic.start_deliver(CLIENT_ID, EPOCH).0);
+        assert!(!logic.start_deliver(CLIENT_ID, EPOCH).0);
+    }
+
+    #[test]
+    fn double_start_deliver_diff_client() {
+        let logic = Logic::new(N_SERVERS);
+
+        assert!(logic.start_deliver(CLIENT_ID, EPOCH).0);
+        assert!(logic.start_deliver(OTHER_CLIENT_ID, EPOCH).0);
+    }
+
+    #[test]
+    fn double_start_deliver_diff_epoch() {
+        let logic = Logic::new(N_SERVERS);
+
+        assert!(logic.start_deliver(CLIENT_ID, EPOCH).0);
+        assert!(logic.start_deliver(CLIENT_ID, OTHER_EPOCH).0);
+    }
+
+    #[test]
+    fn has_been_delivered() {
+        let logic = Logic::new(N_SERVERS);
+
+        logic.start_deliver(CLIENT_ID, EPOCH);
+
+        assert!(logic.has_been_delivered(CLIENT_ID, EPOCH));
+    }
+
+    #[test]
+    fn has_not_yet_been_delivered() {
+        let logic = Logic::new(N_SERVERS);
+
+        assert!(!logic.has_been_delivered(CLIENT_ID, EPOCH));
+    }
+
+    #[test]
+    fn has_been_delivered_or_add_notify() {
+        let logic = Logic::new(N_SERVERS);
+
+        logic.start_deliver(CLIENT_ID, EPOCH);
+
+        if let Some(_) = logic.has_been_delivered_or_add_notify(CLIENT_ID, EPOCH) {
+            panic!("Was already delivered");
+        }
+    }
+
+    #[test]
+    fn add_notify() {
+        let logic = Logic::new(N_SERVERS);
+
+        if let None = logic.has_been_delivered_or_add_notify(CLIENT_ID, EPOCH) {
+            panic!("Was not already delivered");
+        }
+    }
+
+    #[test]
+    fn start_deliver_with_reciver() {
+        let logic = Logic::new(N_SERVERS);
+
+        let mut reciever = logic.has_been_delivered_or_add_notify(CLIENT_ID, EPOCH).unwrap();
+
+        let (_, sender) = logic.start_deliver(CLIENT_ID, EPOCH);
+
+        sender.unwrap().send(0).unwrap();
+
+        assert!(reciever.try_recv().is_ok());
+
+    }
+
+    #[test]
+    fn add_server_to_echo_msg() {
+        let logic = Logic::new(N_SERVERS);
+
+        let msg = b"msg".to_vec();
+
+        assert_eq!(1, logic.add_server_to_echo_msg(CLIENT_ID, SERVER_ID, &msg));
+    }
+
+    #[test]
+    fn add_two_servers_to_echo_msg() {
+        let logic = Logic::new(N_SERVERS);
+
+        let msg = b"msg".to_vec();
+
+        assert_eq!(1, logic.add_server_to_echo_msg(CLIENT_ID, SERVER_ID, &msg));
+        assert_eq!(2, logic.add_server_to_echo_msg(CLIENT_ID, OTHER_SERVER_ID, &msg));
+    }
+
+    #[test]
+    fn add_two_servers_to_echo_msg_off_diff_clients() {
+        let logic = Logic::new(N_SERVERS);
+
+        let msg = b"msg".to_vec();
+
+        assert_eq!(1, logic.add_server_to_echo_msg(CLIENT_ID, SERVER_ID, &msg));
+        assert_eq!(1, logic.add_server_to_echo_msg(OTHER_CLIENT_ID, OTHER_SERVER_ID, &msg));
+    }
+
+    #[test]
+    fn has_echo_message() {
+        let logic = Logic::new(N_SERVERS);
+
+        let msg = b"msg".to_vec();
+
+        logic.add_server_to_echo_msg(CLIENT_ID, SERVER_ID, &msg);
+
+        assert!(logic.has_echo_message(CLIENT_ID, &msg));
+    }
+
+    #[test]
+    fn has_not_echo_message() {
+        let logic = Logic::new(N_SERVERS);
+
+        let msg = b"msg".to_vec();
+
+        logic.add_server_to_echo_msg(OTHER_CLIENT_ID, SERVER_ID, &msg);
+
+        assert!(!logic.has_echo_message(CLIENT_ID, &msg));
+    }
+
+    #[test]
+    fn add_server_to_ready_msg() {
+        let logic = Logic::new(N_SERVERS);
+
+        let msg = b"msg".to_vec();
+
+        assert_eq!(1, logic.add_server_to_ready_msg(CLIENT_ID, SERVER_ID, &msg));
+    }
+
+    #[test]
+    fn add_two_servers_to_ready_msg() {
+        let logic = Logic::new(N_SERVERS);
+
+        let msg = b"msg".to_vec();
+
+        assert_eq!(1, logic.add_server_to_ready_msg(CLIENT_ID, SERVER_ID, &msg));
+        assert_eq!(2, logic.add_server_to_ready_msg(CLIENT_ID, OTHER_SERVER_ID, &msg));
+    }
+
+    #[test]
+    fn add_two_servers_to_ready_msg_off_diff_clients() {
+        let logic = Logic::new(N_SERVERS);
+
+        let msg = b"msg".to_vec();
+
+        assert_eq!(1, logic.add_server_to_ready_msg(CLIENT_ID, SERVER_ID, &msg));
+        assert_eq!(1, logic.add_server_to_ready_msg(OTHER_CLIENT_ID, OTHER_SERVER_ID, &msg));
+    }
+
+    #[test]
+    fn has_ready_message() {
+        let logic = Logic::new(N_SERVERS);
+
+        let msg = b"msg".to_vec();
+
+        logic.add_server_to_ready_msg(CLIENT_ID, SERVER_ID, &msg);
+
+        assert!(logic.has_ready_message(CLIENT_ID, &msg));
+    }
+
+    #[test]
+    fn has_not_ready_message() {
+        let logic = Logic::new(N_SERVERS);
+
+        let msg = b"msg".to_vec();
+
+        logic.add_server_to_ready_msg(OTHER_CLIENT_ID, SERVER_ID, &msg);
+
+        assert!(!logic.has_ready_message(CLIENT_ID, &msg));
     }
 }

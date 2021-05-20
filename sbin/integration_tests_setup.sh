@@ -25,10 +25,10 @@ echo
 
 echo "Starting Servers"
 echo
-rm server/storage/*
+rm server/storage/* 2> /dev/null
 for ((idx=0;idx<n_servers;idx++))
 do
-    gnome-terminal -- ./target/$dir/server --id $idx --size $grid_size --keys $keys_dir --fline $f_line
+    gnome-terminal -- ./target/$dir/server --id $idx --size $grid_size --keys $keys_dir --fline $f_line --n_servers $n_servers
 done
 
 echo "Starting Clients"
@@ -40,4 +40,4 @@ done
 
 echo "Starting ha_client"
 echo
-./target/$dir/ha_client --keys $keys_dir
+./target/$dir/ha_client --n_servers $n_servers --keys $keys_dir
