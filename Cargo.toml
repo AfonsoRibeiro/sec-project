@@ -4,7 +4,7 @@ members = [
     "protos",
     "client",
     "ha_client",
-    "single_server",
+    "server",
     "security",
 ]
 

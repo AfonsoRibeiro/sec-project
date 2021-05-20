@@ -10,7 +10,7 @@ use std::{fs, sync::Arc};
 use security::key_management::{retrieve_server_keys, retrieve_servers_public_keys};
 
 #[derive(StructOpt)]
-#[structopt(name = "Single Server", about = "(Highly) Dependable Location Tracker")]
+#[structopt(name = "Server", about = "(Highly) Dependable Location Tracker")]
 struct Opt {
 
     #[structopt(name = "size", long, default_value = "5")]
@@ -19,7 +19,7 @@ struct Opt {
     #[structopt(name = "keys", long, default_value = "security/keys/")]
     keys_dir : String,
 
-    #[structopt(name = "storage", long, default_value = "single_server/storage/")]
+    #[structopt(name = "storage", long, default_value = "server/storage/")]
     storage_dir : String,
 
     #[structopt(name = "id", long)]

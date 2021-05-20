@@ -1,4 +1,4 @@
 target
 security/keys/**
 grid/grid.txt
-single_server/storage/*
+server/storage/*
