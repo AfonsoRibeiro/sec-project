@@ -12,7 +12,7 @@ use structopt::StructOpt;
 use regex::Regex;
 
 
-use tokio::time::{interval_at, Duration, Instant};
+use tokio::{sync::Mutex, time::{interval_at, Duration, Instant}};
 use tokio::io::{self, AsyncBufReadExt, BufReader};
 use tonic::transport::Uri;
 
@@ -66,9 +66,11 @@ async fn main() -> Result<()> {
 
     let server_urls  = get_servers_url(opt.n_servers);
 
-    tokio::spawn(epochs_generator(timeline.clone(), opt.idx, server_urls.clone(), client_keys.clone(), server_keys.clone(), necessary_res));
+    let atomic = Arc::new(Mutex::new(()));
 
-    read_commands(opt.idx, server_urls, client_keys, server_keys, necessary_res).await;
+    tokio::spawn(epochs_generator(timeline.clone(), opt.idx, server_urls.clone(), client_keys.clone(), server_keys.clone(), necessary_res, atomic.clone()));
+
+    read_commands(opt.idx, server_urls, client_keys, server_keys, necessary_res, atomic).await;
 
     let _x = proofer.await; // Not important result just dont end
 
@@ -83,12 +85,15 @@ async fn reports_generator(
     client_keys : Arc<ClientKeys>,
     server_key : Arc<ServerPublicKey>,
     necessary_res : usize,
+    atomic : Arc<Mutex<()>>,
 ) {
     //TODO: server order -> random
 
     if let Some((loc_x, loc_y)) = timeline.get_location_at_epoch(idx, epoch) {
         let (proofs, idxs_ass) = proofing_system::get_proofs(timeline.clone(), idx, epoch).await;
         if proofs.len() > timeline.f_line && proofs.len() == idxs_ass.len() {
+            atomic.lock().await;
+
             let report = Report::new(epoch, (loc_x, loc_y), idx, idxs_ass, proofs);
 
             let mut responses : FuturesUnordered<_> = server_urls.iter().enumerate().map(
@@ -131,6 +136,7 @@ async fn epochs_generator(
     client_keys : Arc<ClientKeys>,
     server_keys : Arc<ServerPublicKey>,
     necessary_res : usize,
+    atomic : Arc<Mutex<()>>,
 ) -> Result<()> {
 
     let start = Instant::now() + Duration::from_millis(2000);
@@ -141,7 +147,16 @@ async fn epochs_generator(
 
         println!("Client {:} entered epoch {:}/{:}.", idx, epoch, timeline.epochs()-1);
 
-        tokio::spawn(reports_generator(timeline.clone(), idx, epoch, server_urls.clone(), client_keys.clone(), server_keys.clone(), necessary_res));
+        tokio::spawn(reports_generator(
+            timeline.clone(),
+            idx,
+            epoch,
+            server_urls.clone(),
+            client_keys.clone(),
+            server_keys.clone(),
+            necessary_res,
+            atomic.clone(),
+        ));
     }
     Ok(())
 }
@@ -152,8 +167,9 @@ async fn do_get_report_command(
     client_keys : Arc<ClientKeys>,
     server_keys : Arc<ServerPublicKey>,
     epoch : usize,
-
+    atomic : Arc<Mutex<()>>,
 ) {
+    atomic.lock().await;
     let mut responses : FuturesUnordered<_> = server_urls.iter().enumerate().map(
         |(server_id, url)|
             reports::obtain_location_report(
@@ -233,6 +249,7 @@ async fn read_commands(
     client_keys : Arc<ClientKeys>,
     server_keys : Arc<ServerPublicKey>,
     necessary_res : usize,
+    atomic : Arc<Mutex<()>>,
 ){
     print_command_msg();
 
@@ -258,6 +275,7 @@ async fn read_commands(
                     client_keys.clone(),
                     server_keys.clone(),
                     epoch.unwrap(),
+                    atomic.clone(),
                 ).await
 
             } else if rproofs_pat.is_match(buffer.trim_end()) {
