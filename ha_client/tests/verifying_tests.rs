@@ -40,7 +40,7 @@ pub async fn get_submited_report () {
                 server_url,
                 &ha_client_keys.sign_key(),
                 &server_key[0],
-                ha_client_keys.client_public_key(0).unwrap(),
+                ha_client_keys.client_public_key(IDX).unwrap(),
             ).await;
 
         assert!(loc_res.is_ok());

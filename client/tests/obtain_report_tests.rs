@@ -4,7 +4,7 @@ use client::reports;
 use tokio::time::sleep;
 use tonic::transport::Uri;
 
-use std::time::Duration;
+use std::{collections::HashSet, time::Duration};
 
 
 /*
@@ -86,7 +86,7 @@ pub async fn get_not_submitted_yet_report () {
 
     let loc_res =
         reports::obtain_location_report(
-            NOT_MINE_IDX,
+            IDX,
             N_EPOCHS,
             server_url,
             client_keys.sign_key(),
@@ -95,4 +95,33 @@ pub async fn get_not_submitted_yet_report () {
         ).await;
 
     assert!(loc_res.is_err());
+}
+
+#[tokio::test]
+#[ignore]
+pub async fn get_submited_proofs () {
+    let server_url : Uri = Uri::from_static("http://[::1]:50000");
+
+    common::make_thread_safe();
+
+    let client_keys = common::get_client_keys(IDX);
+    let server_key = common::get_pub_server_key();
+
+    sleep(Duration::from_millis(2000)).await; //allow time for user to have submited report
+
+    let mut set = HashSet::new();
+
+    set.insert(EPOCH);
+
+    let proof_res =
+        reports::request_my_proofs(
+            IDX,
+            set,
+            server_url,
+            client_keys.sign_key(),
+            &server_key[0],
+            client_keys.public_key(),
+        ).await;
+
+    assert!(proof_res.is_ok());
 }

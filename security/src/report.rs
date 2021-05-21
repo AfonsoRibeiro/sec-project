@@ -8,7 +8,7 @@ use eyre::eyre;
 
 use pow::Pow;
 
-use super::DIFICULTY;
+use crate::DIFICULTY;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct Report {
