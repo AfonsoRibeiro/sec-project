@@ -1,5 +1,6 @@
 
 use color_eyre::eyre::Result;
+use dashmap::DashSet;
 
 use std::sync::Arc;
 
@@ -11,7 +12,7 @@ use protos::location_storage::{RequestMyProofsRequest, RequestMyProofsResponse, 
 use protos::location_storage::{SubmitLocationReportRequest, SubmitLocationReportResponse,
     ObtainLocationReportRequest, ObtainLocationReportResponse};
 
-use security::key_management::ServerKeys;
+use security::{key_management::ServerKeys, report::confirm_proof_of_work};
 use security::report::{decode_info, decode_report};
 use security::status::{decode_loc_report, encode_loc_response, decode_my_proofs_request, encode_my_proofs_response};
 
@@ -23,6 +24,7 @@ pub struct MyLocationStorage {
     storage : Arc<Timeline>,
     server_keys : Arc<ServerKeys>,
     echo : Arc<DoubleEcho>,
+    pows : DashSet<Vec<u8>>,
 }
 
 impl MyLocationStorage {
@@ -35,8 +37,21 @@ impl MyLocationStorage {
         MyLocationStorage {
             storage,
             server_keys,
-            echo
+            echo,
+            pows : DashSet::new(),
         }
+    }
+
+    fn check_proof_of_work(&self, pow : &Vec<u8>, info : &Vec<u8>) -> Result<(), Status> {
+        match confirm_proof_of_work(pow, info) {
+            Ok(_) => {
+                if !self.pows.insert(pow.clone()) {
+                    //return Err(Status::permission_denied(format!("Already submited proof of work")));
+                }
+            }
+            Err(_) => { return Err(Status::permission_denied(format!("Not a good proof of work"))); }
+        }
+        Ok(())
     }
 }
 
@@ -48,6 +63,8 @@ impl LocationStorage for MyLocationStorage {
     ) -> Result<Response<SubmitLocationReportResponse>, Status> {
 
         let request = request.get_ref();
+
+        self.check_proof_of_work(&request.pow, &request.report_info)?;
 
         let info = if let Ok(info) = decode_info(
             self.server_keys.private_key(),
@@ -112,6 +129,8 @@ impl LocationStorage for MyLocationStorage {
     ) -> Result<Response<ObtainLocationReportResponse>, Status> {
         let request = request.get_ref();
 
+        self.check_proof_of_work(&request.pow, &request.user_info)?;
+
         let info = if let Ok(info) = decode_info(
             self.server_keys.private_key(),
             self.server_keys.public_key(),
@@ -163,6 +182,8 @@ impl LocationStorage for MyLocationStorage {
         request : Request<RequestMyProofsRequest>,
     ) -> Result<Response<RequestMyProofsResponse>, Status> {
         let request = request.get_ref();
+
+        self.check_proof_of_work(&request.pow, &request.user_info)?;
 
         let info = if let Ok(info) = decode_info(
             self.server_keys.private_key(),

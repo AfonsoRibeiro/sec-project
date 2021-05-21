@@ -6,6 +6,10 @@ use sodiumoxide::crypto::sealedbox;
 use color_eyre::eyre::Result;
 use eyre::eyre;
 
+use pow::Pow;
+
+use super::DIFICULTY;
+
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct Report {
     epoch : usize,
@@ -59,7 +63,7 @@ pub fn encode_report(
     theirpk : &box_::PublicKey,
     report : &Report,
     idx : usize
-) -> (Vec<u8>, Vec<u8>, secretbox::Key) {
+) -> (Vec<u8>, Vec<u8>, secretbox::Key, Vec<u8>) {
 
     let plaintext = serde_json::to_vec(report).unwrap();
     let signtext = sign::sign(&plaintext, signsk);
@@ -72,7 +76,22 @@ pub fn encode_report(
     let info = ReportInfo::new(idx, key.clone(), box_nonce);
     let textinfo = serde_json::to_vec(&info).unwrap();
 
-    (sealedbox::seal(&textinfo, theirpk), enc_report, key)
+    let encoded_textinfo = sealedbox::seal(&textinfo, theirpk);
+
+    let pw = Pow::prove_work(&encoded_textinfo, DIFICULTY).unwrap();
+    let vec_pw  = serde_json::to_vec(&pw).unwrap();
+
+    (encoded_textinfo, enc_report, key, vec_pw)
+}
+
+pub fn confirm_proof_of_work(pow : &Vec<u8>, info : &Vec<u8>) -> Result<()> {
+    let pw : Pow<Vec<u8>> = serde_json::from_slice(pow)?;
+
+    if pw.score(info).unwrap() >= DIFICULTY {
+        Ok(())
+    } else {
+        Err(eyre!("Incorrect proof of work"))
+    }
 }
 
 pub fn decode_info(
@@ -153,7 +172,7 @@ mod tests {
         let (sign_pk, sign_sk) = sign::gen_keypair();
         let (server_pk, server_sk) = box_::gen_keypair();
 
-        let (cipherinfo, cipherreport, key) = encode_report(&sign_sk, &server_pk, &report, IDX_REQ);
+        let (cipherinfo, cipherreport, key, pow) = encode_report(&sign_sk, &server_pk, &report, IDX_REQ);
 
         let info = decode_info(&server_sk, &server_pk, &cipherinfo);
 
@@ -177,7 +196,7 @@ mod tests {
         let (fake_sign_pk, _) = sign::gen_keypair();
         let (server_pk, server_sk) = box_::gen_keypair();
 
-        let (cipherinfo, cipherreport, key) = encode_report(&sign_sk, &server_pk, &report, IDX_REQ);
+        let (cipherinfo, cipherreport, key, pow) = encode_report(&sign_sk, &server_pk, &report, IDX_REQ);
 
         let info = decode_info(&server_sk, &server_pk, &cipherinfo);
 
@@ -199,7 +218,7 @@ mod tests {
         let (server_pk, _) = box_::gen_keypair();
         let (_, fake_server_sk) = box_::gen_keypair();
 
-        let (cipherinfo, _, _) = encode_report(&sign_sk, &server_pk, &report, IDX_REQ);
+        let (cipherinfo, _, _, _) = encode_report(&sign_sk, &server_pk, &report, IDX_REQ);
 
         let info = decode_info(&fake_server_sk, &server_pk, &cipherinfo);
 

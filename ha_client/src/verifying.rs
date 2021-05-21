@@ -26,11 +26,12 @@ pub async fn obtain_location_report(
     let mut client = LocationMasterClient::connect(url).await?;
 
     let loc_report = LocationReportRequest::new(idx, epoch);
-    let (info, user, key) = encode_location_report(&sign_key, server_key, &loc_report, idx);
+    let (info, user, key, pow) = encode_location_report(&sign_key, server_key, &loc_report, idx);
 
     let request = tonic::Request::new(ObtainLocationReportRequest {
         user,
-        info
+        info,
+        pow,
     });
 
     let report = match client.obtain_location_report(request).await {
@@ -71,11 +72,12 @@ pub async fn obtain_users_at_location(
     let mut client = LocationMasterClient::connect(url).await?;
 
     let loc_report = UsersAtLocationRequest::new((pos_x, pos_y), epoch);
-    let (info, place, key) = encode_users_at_location_report(&sign_key, server_key, &loc_report, 0);
+    let (info, place, key, pow) = encode_users_at_location_report(&sign_key, server_key, &loc_report, 0);
 
     let request = tonic::Request::new(ObtainUsersAtLocationRequest {
         place,
-        info
+        info,
+        pow,
     });
 
     match client.obtain_users_at_location(request).await {

@@ -11,6 +11,7 @@ service LocationStorage {
 message SubmitLocationReportRequest { //report is encrypted with idx
     bytes report = 1;
     bytes report_info = 2;
+    bytes pow = 3;
 }
 
 message SubmitLocationReportResponse {
@@ -21,6 +22,7 @@ message SubmitLocationReportResponse {
 message ObtainLocationReportRequest {
     bytes user = 1;
     bytes user_info = 2;
+    bytes pow = 3;
 }
 
 message ObtainLocationReportResponse {
@@ -31,6 +33,7 @@ message ObtainLocationReportResponse {
 message RequestMyProofsRequest {
     bytes epochs = 1;
     bytes user_info = 2;
+    bytes pow = 3;
 }
 
 message RequestMyProofsResponse {

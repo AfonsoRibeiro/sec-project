@@ -10,6 +10,7 @@ service LocationMaster {
 message ObtainLocationReportRequest {
     bytes user = 1;
     bytes info = 2;
+    bytes pow = 3;
 }
 
 message ObtainLocationReportResponse {
@@ -20,6 +21,7 @@ message ObtainLocationReportResponse {
 message ObtainUsersAtLocationRequest {
     bytes place = 1;
     bytes info = 2;
+    bytes pow = 3;
 }
 
 message ObtainUsersAtLocationResponse {

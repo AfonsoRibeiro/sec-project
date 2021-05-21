@@ -1,12 +1,13 @@
 use std::collections::HashSet;
 
+use pow::Pow;
 use serde_derive::{Deserialize, Serialize};
 use sodiumoxide::crypto::sign;
 use sodiumoxide::crypto::box_;
 use sodiumoxide::crypto::secretbox;
 use sodiumoxide::crypto::sealedbox;
 use color_eyre::eyre::Result;
-use crate::{proof::{self, Proof}, report::ReportInfo};
+use crate::{DIFICULTY, proof::{self, Proof}, report::ReportInfo};
 use eyre::eyre;
 
 
@@ -63,7 +64,7 @@ pub fn encode_location_report(
     theirpk : &box_::PublicKey,
     loc_report : &LocationReportRequest,
     idx : usize
-) -> (Vec<u8>, Vec<u8>, secretbox::Key) {
+) -> (Vec<u8>, Vec<u8>, secretbox::Key, Vec<u8>) {
 
     let plaintext = serde_json::to_vec(loc_report).unwrap();
     let signtext = sign::sign(&plaintext, signsk);
@@ -76,7 +77,12 @@ pub fn encode_location_report(
     let info = ReportInfo::new(idx, key.clone(), box_nonce);
     let textinfo = serde_json::to_vec(&info).unwrap();
 
-    (sealedbox::seal(&textinfo, theirpk), enc_report, key)
+    let encoded_textinfo =sealedbox::seal(&textinfo, theirpk);
+
+    let pw = Pow::prove_work(&encoded_textinfo, DIFICULTY).unwrap();
+    let vec_pw  = serde_json::to_vec(&pw).unwrap();
+
+    (encoded_textinfo, enc_report, key, vec_pw)
 }
 
 pub fn decode_loc_report(
@@ -162,7 +168,7 @@ pub fn encode_users_at_location_report(
     theirpk : &box_::PublicKey,
     users_at_loc : &UsersAtLocationRequest,
     idx : usize
-) -> (Vec<u8>, Vec<u8>, secretbox::Key) {
+) -> (Vec<u8>, Vec<u8>, secretbox::Key, Vec<u8>) {
 
     let plaintext = serde_json::to_vec(users_at_loc).unwrap();
     let signtext = sign::sign(&plaintext, signsk);
@@ -175,7 +181,12 @@ pub fn encode_users_at_location_report(
     let info = ReportInfo::new(idx, key.clone(), box_nonce);
     let textinfo = serde_json::to_vec(&info).unwrap();
 
-    (sealedbox::seal(&textinfo, theirpk), enc_report, key)
+    let encoded_textinfo = sealedbox::seal(&textinfo, theirpk);
+
+    let pw = Pow::prove_work(&encoded_textinfo, DIFICULTY).unwrap();
+    let vec_pw  = serde_json::to_vec(&pw).unwrap();
+
+    (encoded_textinfo, enc_report, key, vec_pw)
 }
 
 pub fn decode_users_at_loc_report(
@@ -258,7 +269,7 @@ pub fn encode_my_proofs_request(
     theirpk : &box_::PublicKey,
     my_proofs : &MyProofsRequest,
     idx : usize
-) -> (Vec<u8>, Vec<u8>, secretbox::Key) {
+) -> (Vec<u8>, Vec<u8>, secretbox::Key, Vec<u8>) {
 
     let plaintext = serde_json::to_vec(my_proofs).unwrap();
     let signtext = sign::sign(&plaintext, signsk);
@@ -271,7 +282,12 @@ pub fn encode_my_proofs_request(
     let info = ReportInfo::new(idx, key.clone(), box_nonce);
     let textinfo = serde_json::to_vec(&info).unwrap();
 
-    (sealedbox::seal(&textinfo, theirpk), enc_epochs, key)
+    let encoded_textinfo = sealedbox::seal(&textinfo, theirpk);
+
+    let pw = Pow::prove_work(&encoded_textinfo, DIFICULTY).unwrap();
+    let vec_pw  = serde_json::to_vec(&pw).unwrap();
+
+    (encoded_textinfo, enc_epochs, key, vec_pw)
 }
 
 pub fn decode_my_proofs_request(
@@ -322,7 +338,7 @@ pub fn decode_my_proofs_response(
             else {
                 return Err(eyre!("Decode of users at location response failed."))
             }
-        }     
+        }
         Ok(result)
     } else {
         Err(eyre!("Decode of users at location response failed."))
