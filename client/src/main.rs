@@ -87,7 +87,6 @@ async fn reports_generator(
     necessary_res : usize,
     atomic : Arc<Mutex<()>>,
 ) {
-    //TODO: server order -> random
 
     if let Some((loc_x, loc_y)) = timeline.get_location_at_epoch(idx, epoch) {
         let (proofs, idxs_ass) = proofing_system::get_proofs(timeline.clone(), idx, epoch).await;

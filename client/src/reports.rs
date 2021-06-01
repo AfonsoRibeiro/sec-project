@@ -36,7 +36,6 @@ pub async fn submit_location_report(
             if success_report(&key, &response.nonce, &response.ok) {
                 Ok(())
             } else {
-                println!("submited");
                 Err(eyre!("submit_location_report unable to validate server response "))
             }
         }

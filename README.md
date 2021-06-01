@@ -14,7 +14,7 @@ The system directories are organized as follows:
 * protos : contains the protos used for the gRPC communication;
 * report : contains the report explaining the project and our decisions;
 * sbin : contains the script to run the entire system;
-* security : contains the source code related with the security of the system and a folder(keys) with all the keys for the system in it;
+* security : contains the source code related with the security of the system;
 * server : contains the source code related to the server side;
 * target : contains the binaries;
 
@@ -54,11 +54,11 @@ To avoid that tedious process you can use the script launch\_system.sh that star
 To run the script:
 `./sbin/launch_system.sh`
 
-If you desire to run everything on your own, you can start the server by: `./target/debug/server --fline <fline> --keys <keys> --server <server> --size <size> --storage <storage>` and then start each one of the clients individually.
-
 Each client is able to obtain his location report with the command:
 
 `report <epoch>` (the ha client is able to obtain everyones reports)
+
+`proof <epoch> <epoch>*`
 
 The ha client has another command besides the one mentioned previously, which allows him to obtain the list of users at a position:
 
